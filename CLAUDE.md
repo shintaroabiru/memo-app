@@ -326,8 +326,8 @@ feat: メモの新規作成APIを追加
 
 ### フェーズ1（実装中）
 
-- [ ] プロジェクト初期セットアップ（Next.js / FastAPI / Docker Compose）
-- [ ] DBマイグレーション（初期スキーマ + 仮ユーザーシード）
+- [x] プロジェクト初期セットアップ（Next.js / FastAPI / Docker Compose）
+- [x] DBマイグレーション（初期スキーマ + 仮ユーザーシード）
 - [ ] メモCRUD API
 - [ ] メモ一覧・検索 API
 - [ ] タグ管理 API
