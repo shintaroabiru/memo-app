@@ -60,7 +60,11 @@ memo-app/
 │   ├── project-overview.md
 │   ├── requirements.md
 │   ├── architecture.md
-│   └── db-schema.md
+│   ├── db-schema.md
+│   ├── api-spec.md
+│   └── design/            # UIデザイン（Pencil）
+│       ├── README.md      # Pencilの使い方・運用ルール
+│       └── design.pen     # メインのモックアップファイル
 ├── docker-compose.yml     # バックエンド + DB の環境定義
 ├── .env.example           # 環境変数テンプレート
 ├── .gitignore
@@ -345,3 +349,7 @@ backend/
 | APIバージョニング     | `/api/v1/` プレフィックス                        |
 | 環境構築              | バックエンド・DBをDocker Composeで起動            |
 | バックエンドのレイヤー | api / services / repositories / models の4層     |
+| フロントテスト        | Vitest                                          |
+| フロントLint/Format   | ESLint + Prettier                               |
+| バックLint/Format     | Ruff                                            |
+| UIデザインツール       | Pencil（`docs/design/design.pen`）              |

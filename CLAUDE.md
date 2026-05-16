@@ -14,6 +14,7 @@
 - **アーキテクチャ**: [`docs/architecture.md`](./docs/architecture.md)
 - **DB設計**: [`docs/db-schema.md`](./docs/db-schema.md)
 - **API仕様**: [`docs/api-spec.md`](./docs/api-spec.md)
+- **UIデザイン**: [`docs/design/`](./docs/design/)
 
 実装に着手する前に、**関連するドキュメントを必ず読んでください**。
 
@@ -33,14 +34,18 @@
 ## 3. 技術スタック（厳守）
 
 ### フロントエンド
+
 - Next.js（**App Router** を使用、Pages Router は使わない）
 - TypeScript（strict mode）
 - React
 - Zod（バリデーション）
 - Zustand（クライアント状態管理）
 - Tailwind CSS
+- **Vitest**（テストランナー）
+- **ESLint + Prettier**（Lint / Formatter）
 
 ### バックエンド
+
 - FastAPI
 - Python（3.11以上）
 - PostgreSQL
@@ -48,8 +53,16 @@
 - Alembic（マイグレーション）
 - Pydantic（スキーマ）
 - pytest（テスト）
+- **Ruff**（Lint / Formatter）
+
+### デザインツール
+
+- **Pencil**（UIモックアップ・ワイヤーフレーム作成）
+  - 成果物は `docs/design/design.pen` に配置
+  - 詳細な運用は [`docs/design/README.md`](./docs/design/README.md) を参照
 
 ### 環境
+
 - Docker Compose（バックエンド + DB）
 - フロントはローカル `npm run dev`
 
@@ -85,25 +98,35 @@
 
 ### 4.3 テストの粒度方針
 
-| レイヤー       | テスト種別     | 重点                                   |
-|----------------|---------------|----------------------------------------|
-| バックエンド `services/` | 単体テスト | ビジネスロジックの正常系・異常系を網羅 |
-| バックエンド `repositories/` | 単体テスト | DB操作の正しさ（テストDBで実施）       |
-| バックエンド `api/`        | APIテスト  | エンドポイント単位の入出力検証          |
-| フロント `features/` 内のロジック | 単体テスト | hooks / 純粋関数の振る舞い            |
-| フロント コンポーネント | コンポーネントテスト | 主要な操作と表示（最小限でよい）       |
+| レイヤー                          | テスト種別           | 重点                                   |
+| --------------------------------- | -------------------- | -------------------------------------- |
+| バックエンド `services/`          | 単体テスト           | ビジネスロジックの正常系・異常系を網羅 |
+| バックエンド `repositories/`      | 単体テスト           | DB操作の正しさ（テストDBで実施）       |
+| バックエンド `api/`               | APIテスト            | エンドポイント単位の入出力検証         |
+| フロント `features/` 内のロジック | 単体テスト           | hooks / 純粋関数の振る舞い             |
+| フロント コンポーネント           | コンポーネントテスト | 主要な操作と表示（最小限でよい）       |
 
 ### 4.4 テスト実行コマンド（暫定）
 
 ```bash
-# バックエンド
+# バックエンド（pytest）
 cd backend && pytest
 
-# フロント
+# フロント（Vitest）
 cd frontend && npm test
 ```
 
 > 実際のコマンドはプロジェクト初期化時に確定する。
+
+### 4.5 Lint / Formatter
+
+| 対象         | ツール                | コマンド（暫定）                                |
+| ------------ | --------------------- | ----------------------------------------------- |
+| バックエンド | **Ruff**              | `cd backend && ruff check . && ruff format .`   |
+| フロント     | **ESLint + Prettier** | `cd frontend && npm run lint && npm run format` |
+
+- コミット前にローカルでLint/Formatを実行する
+- 将来的に pre-commit / lint-staged の導入を検討
 
 ---
 
@@ -139,15 +162,15 @@ cd frontend && npm test
 
 ### 5.4 命名規約
 
-| 対象                   | 規約                                          |
-|-----------------------|----------------------------------------------|
-| React コンポーネント    | PascalCase（`MemoCard.tsx`）                  |
-| カスタムフック          | `use` プレフィックス（`useMemoList`）          |
-| Zustand ストア          | `xxxStore`（`memoStore.ts`）                  |
-| Python クラス           | PascalCase                                    |
-| Python 関数・変数       | snake_case                                    |
-| DBテーブル名            | snake_case・複数形（`memos`, `memo_tags`）     |
-| APIパス                | 複数形を採用（`/api/v1/memos`）                |
+| 対象                 | 規約                                       |
+| -------------------- | ------------------------------------------ |
+| React コンポーネント | PascalCase（`MemoCard.tsx`）               |
+| カスタムフック       | `use` プレフィックス（`useMemoList`）      |
+| Zustand ストア       | `xxxStore`（`memoStore.ts`）               |
+| Python クラス        | PascalCase                                 |
+| Python 関数・変数    | snake_case                                 |
+| DBテーブル名         | snake_case・複数形（`memos`, `memo_tags`） |
+| APIパス              | 複数形を採用（`/api/v1/memos`）            |
 
 ---
 
@@ -156,12 +179,14 @@ cd frontend && npm test
 `docs/architecture.md` で定義された構造に従ってください。
 
 ### フロント（重要ルール）
+
 - `app/` はルーティングのみ。ロジックは `features/` に置く
 - `app/api/` は BFF として FastAPI を呼ぶだけ。ビジネスロジックを書かない
 - 機能固有のコンポーネントは `features/{機能名}/components/` に置く
 - `components/ui/` は汎用UIのみ
 
 ### バックエンド（重要ルール）
+
 - `api/v1/` 配下にエンドポイントを配置
 - ビジネスロジックは `services/` に集約
 - DB操作は `repositories/` に閉じる
@@ -193,15 +218,15 @@ cd frontend && npm test
 
 **type 一覧**
 
-| type       | 用途                              |
-|-----------|----------------------------------|
-| `feat`     | 新機能の追加                       |
-| `fix`      | バグ修正                          |
-| `docs`     | ドキュメントのみの変更              |
-| `style`    | フォーマット・空白等（動作に影響なし）|
-| `refactor` | リファクタリング                    |
-| `test`     | テストの追加・修正                  |
-| `chore`    | ビルド・ツール・依存関係の更新       |
+| type       | 用途                                   |
+| ---------- | -------------------------------------- |
+| `feat`     | 新機能の追加                           |
+| `fix`      | バグ修正                               |
+| `docs`     | ドキュメントのみの変更                 |
+| `style`    | フォーマット・空白等（動作に影響なし） |
+| `refactor` | リファクタリング                       |
+| `test`     | テストの追加・修正                     |
+| `chore`    | ビルド・ツール・依存関係の更新         |
 
 **例**
 
@@ -234,14 +259,15 @@ feat: メモの新規作成APIを追加
 
 ### 8.2 ドキュメント更新タイミング
 
-| 状況                          | 更新対象                              |
-|------------------------------|---------------------------------------|
-| 機能仕様の変更                 | `requirements.md`                     |
-| アーキテクチャの変更           | `architecture.md`                     |
-| DBスキーマの変更               | `db-schema.md`                        |
-| API仕様の変更                  | `api-spec.md`                         |
-| ワークフロー・規約の変更       | `CLAUDE.md`（本ファイル）              |
-| プロジェクト全体の方針変更     | `project-overview.md`                 |
+| 状況                         | 更新対象                  |
+| ---------------------------- | ------------------------- |
+| 機能仕様の変更               | `requirements.md`         |
+| アーキテクチャの変更         | `architecture.md`         |
+| DBスキーマの変更             | `db-schema.md`            |
+| API仕様の変更                | `api-spec.md`             |
+| ワークフロー・規約の変更     | `CLAUDE.md`（本ファイル） |
+| プロジェクト全体の方針変更   | `project-overview.md`     |
+| UIデザイン・画面モックの変更 | `docs/design/design.pen`  |
 
 ### 8.3 確認を取るタイミング
 
@@ -299,6 +325,7 @@ feat: メモの新規作成APIを追加
 ## 11. プロジェクトの現在地
 
 ### フェーズ1（実装中）
+
 - [ ] プロジェクト初期セットアップ（Next.js / FastAPI / Docker Compose）
 - [ ] DBマイグレーション（初期スキーマ + 仮ユーザーシード）
 - [ ] メモCRUD API
@@ -310,6 +337,7 @@ feat: メモの新規作成APIを追加
 - [ ] フロント実装（プロフィール編集）
 
 ### フェーズ2（未着手）
+
 - [ ] ユーザー登録
 - [ ] 認証機能
 - [ ] 既存データの実ユーザーへの移行
