@@ -11,18 +11,29 @@
 
 ### フロントエンド
 
-- **Next.js**
-- **TypeScript**
+- **Next.js**（App Router）
+- **TypeScript**（strict mode）
 - **React**
 - **Zod**（バリデーション）
 - **Zustand**（状態管理）
+- **Tailwind CSS**
+- **Vitest**（テストランナー）
+- **ESLint + Prettier**（Lint / Formatter）
 
 ### バックエンド
 
 - **FastAPI**
-- **Python**
+- **Python**（3.11以上）
 - **PostgreSQL**
-- **Docker**(環境構築に使用)
+- **SQLAlchemy** / **Alembic** / **Pydantic**
+- **pytest**（テスト）
+- **Ruff**（Lint / Formatter）
+- **Docker**（環境構築に使用）
+
+### デザイン
+
+- **Pencil**（UIモックアップ・ワイヤーフレーム）
+  - 成果物: `docs/design/design.pen`
 
 ### 開発環境
 
