@@ -1,20 +1,6 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.pytest_cache/
-.ruff_cache/
-.venv/
-venv/
-.python-version
-
-# Node
-node_modules/
-.next/
-out/
-dist/
-*.tsbuildinfo
+# プロジェクト横断の無視パターン
+# 各サブディレクトリ固有のパターン（Next.js / Python など）は
+# それぞれの .gitignore に分けて管理する。
 
 # 環境変数
 .env
@@ -32,11 +18,6 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
-
-# テスト/カバレッジ
-.coverage
-coverage/
-htmlcov/
 
 # ログ
 *.log
