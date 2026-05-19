@@ -108,6 +108,33 @@
 | フロント `features/` 内のロジック | 単体テスト           | hooks / 純粋関数の振る舞い             |
 | フロント コンポーネント           | コンポーネントテスト | 主要な操作と表示（最小限でよい）       |
 
+#### バックエンド: テスト用セッションの落とし穴（`updated_at` 検証）
+
+`backend/tests/conftest.py` の `db_session` フィクスチャは **savepoint パターン**（`join_transaction_mode="create_savepoint"`）を採用しているため、1テスト内のすべてのDB操作が単一のPostgreSQLトランザクション内で実行される。PostgreSQL の `now()` / `CURRENT_TIMESTAMP` はトランザクション開始時刻を返す仕様のため、`TimestampMixin` の `onupdate=func.now()` で `updated_at` を更新しても **作成時と同じ値** になってしまい、「`updated_at` が更新されたか」を直接 assert すると失敗する。
+
+対処パターン: テスト対象の更新操作の前に raw SQL で過去日へ backdate してから assert する。
+
+```python
+from datetime import UTC, datetime, timedelta
+from sqlalchemy import text
+
+past = datetime.now(UTC) - timedelta(days=1)
+db_session.execute(
+    text("UPDATE memos SET updated_at = :ts WHERE id = :id"),
+    {"ts": past, "id": memo.id},
+)
+db_session.expire(memo)
+db_session.refresh(memo)
+before = memo.updated_at  # = past
+
+# ここで更新オペレーションを実行（onupdate により updated_at が now() に refresh される）
+service.toggle_pin(...)
+
+assert memo.updated_at > before
+```
+
+実装例: [`backend/tests/repositories/test_memo_repository.py::test_update_pinned_changes_flag_and_updated_at`](./backend/tests/repositories/test_memo_repository.py)。新規タスクで onupdate 系カラムの挙動を検証するときは同じパターンを踏襲すること。
+
 ### 4.4 テスト実行コマンド（暫定）
 
 ```bash

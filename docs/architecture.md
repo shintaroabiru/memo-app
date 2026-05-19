@@ -261,6 +261,16 @@ backend/
 
 > `repositories/` は学習目的で導入しているが、規模が小さいうちは `services/` から直接モデルを触ってもよい。プロジェクトの成熟度に応じて段階的に分離する。
 
+#### 共通実装パターン: 外部リソース参照の存在/権限検証
+
+リクエストに「既存リソースの ID 配列」（例: メモ作成時の `tag_ids`、将来のメモ共有先 `user_ids` など）が含まれるとき、**Repository は "ユーザーが所有しているもののみ" を返す検索メソッド**を提供し、**Service が "入力との差分" を計算してエラー化する**ように責務を分ける。
+
+- Repository: `find_*_by_ids(user_id, ids)` で **ホワイトリストされた結果のみ** を返す（存在しない / 他ユーザー所有のものは結果に含めない）
+- Service: `len(found) != len(input)` の場合に不足 ID を計算し、`BadRequestError` を投げる
+- DB の FK 違反（IntegrityError）に頼って事後検出すると、誤誘導メッセージや不要なロールバックを招くので採用しない
+
+実装例: [`backend/app/services/memo_service.py`](../backend/app/services/memo_service.py) の `_resolve_tags` と [`backend/app/repositories/memo_repository.py`](../backend/app/repositories/memo_repository.py) の `find_user_tags`。同様のニーズが発生する新しいエンドポイントでもこのパターンを踏襲する。
+
 ### 4.3 APIバージョニング
 
 - FastAPI 側を **正準パス** とし、`/api/v1/...` プレフィックスで運用する（将来の破壊的変更に備える）
