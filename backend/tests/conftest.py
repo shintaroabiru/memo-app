@@ -1,7 +1,8 @@
 """pytest共通フィクスチャ。
 
-- `client`: FastAPIのテスト用HTTPクライアント
+- `client`: FastAPIのテスト用HTTPクライアント（依存性オーバーライド済み）
 - `db_session`: テストDBに接続したSQLAlchemyセッション（各テストでロールバック）
+- `default_user`: API テスト用の仮ユーザー（`get_current_user_id` 経由で参照される）
 - テスト用DB (`memo_app_test`) は初回テスト時に自動作成される
 """
 
@@ -16,8 +17,10 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 
 import app.models  # noqa: F401  Base.metadata に全モデルを登録するための副作用 import
+from app.api.deps import get_current_user_id, get_session
 from app.core.database import Base
 from app.main import app as fastapi_app
+from app.models import UserProfile
 
 DEFAULT_TEST_DB_URL = "postgresql+psycopg://memo:memo@localhost:5432/memo_app_test"
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", DEFAULT_TEST_DB_URL)
@@ -71,6 +74,23 @@ def db_session(engine: Engine) -> Generator[Session, None, None]:
 
 
 @pytest.fixture
-def client() -> TestClient:
-    """FastAPIのテスト用HTTPクライアント。"""
-    return TestClient(fastapi_app)
+def default_user(db_session: Session) -> UserProfile:
+    """API テストで `get_current_user_id` が返すデフォルトの仮ユーザー。"""
+    user = UserProfile(display_name="API テストユーザー")
+    db_session.add(user)
+    db_session.flush()
+    return user
+
+
+@pytest.fixture
+def client(db_session: Session, default_user: UserProfile) -> Generator[TestClient, None, None]:
+    """FastAPIのテスト用HTTPクライアント。
+
+    `get_session` をテスト用セッションに、`get_current_user_id` を `default_user` に差し替える。
+    """
+    fastapi_app.dependency_overrides[get_session] = lambda: db_session
+    fastapi_app.dependency_overrides[get_current_user_id] = lambda: default_user.id
+    try:
+        yield TestClient(fastapi_app)
+    finally:
+        fastapi_app.dependency_overrides.clear()

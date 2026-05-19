@@ -15,9 +15,16 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def get_session() -> Generator[Session, None, None]:
-    """FastAPIの依存性注入で使うDBセッション。"""
+    """FastAPIの依存性注入で使うDBセッション。
+
+    commit は Service層がレスポンス確定前に明示的に呼ぶ。
+    ここでは未捕捉の例外に対して安全網として rollback する。
+    """
     session = SessionLocal()
     try:
         yield session
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()
