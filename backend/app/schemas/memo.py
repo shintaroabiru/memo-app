@@ -10,6 +10,7 @@ from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 TITLE_MIN_LENGTH = 1
 TITLE_MAX_LENGTH = 100
@@ -52,8 +53,13 @@ class MemoCreate(BaseModel):
     @field_validator("tag_ids")
     @classmethod
     def _no_duplicate_tag_ids(cls, value: list[UUID]) -> list[UUID]:
+        # `ValueError` を raise すると Pydantic がメッセージに "Value error, " を前置するため、
+        # クライアントに返す details.message を整えるべく PydanticCustomError を使う。
         if len(value) != len(set(value)):
-            raise ValueError("重複したタグIDが含まれています")
+            raise PydanticCustomError(
+                "duplicate_tag_ids",
+                "重複したタグIDが含まれています",
+            )
         return value
 
 

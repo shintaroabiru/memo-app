@@ -75,6 +75,16 @@ def test_memo_create_rejects_duplicate_tag_ids() -> None:
         MemoCreate(title="t", tag_ids=[dup, dup])
 
 
+def test_memo_create_duplicate_tag_ids_message_has_no_value_error_prefix() -> None:
+    """重複エラーのメッセージは Pydantic デフォルトの "Value error, " 前置きを含まない。"""
+    dup = uuid4()
+    with pytest.raises(ValidationError) as exc_info:
+        MemoCreate(title="t", tag_ids=[dup, dup])
+
+    msgs = [err["msg"] for err in exc_info.value.errors() if err["loc"] == ("tag_ids",)]
+    assert msgs == ["重複したタグIDが含まれています"]
+
+
 def test_memo_create_rejects_invalid_uuid_in_tag_ids() -> None:
     with pytest.raises(ValidationError):
         MemoCreate(title="t", tag_ids=["not-a-uuid"])

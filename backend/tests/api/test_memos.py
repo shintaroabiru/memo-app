@@ -108,6 +108,21 @@ def test_update_memo_returns_tags_in_name_order_regardless_of_input(
     assert [t["name"] for t in res.json()["tags"]] == ["a", "z"]
 
 
+def test_create_memo_returns_clean_message_for_duplicate_tag_ids(api_client: TestClient) -> None:
+    """API レスポンスの details.message は Pydantic 内部前置き ("Value error, ") を含まない。"""
+    tag_id = str(uuid4())
+    res = api_client.post(
+        "/api/v1/memos",
+        json={"title": "t", "tag_ids": [tag_id, tag_id]},
+    )
+
+    assert res.status_code == 400
+    body = res.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    tag_ids_detail = next(d for d in body["error"]["details"] if d["field"] == "tag_ids")
+    assert tag_ids_detail["message"] == "重複したタグIDが含まれています"
+
+
 def test_create_memo_returns_400_on_validation_error(api_client: TestClient) -> None:
     res = api_client.post("/api/v1/memos", json={"title": ""})
 
