@@ -94,9 +94,7 @@ def client() -> TestClient:
 
 
 @pytest.fixture
-def api_client(
-    db_session: Session, default_user: UserProfile
-) -> Generator[TestClient, None, None]:
+def api_client(db_session: Session, default_user: UserProfile) -> Generator[TestClient, None, None]:
     """API テスト用のクライアント。
 
     `get_session` をテスト用セッションに、`get_current_user_id` を `default_user` に差し替える。
