@@ -182,7 +182,7 @@ cd frontend && npm test
 - **型ヒント必須**: 関数の引数・戻り値に型を付ける
 - **`Any` を避ける**: 適切な型で表現する
 - **Pydantic スキーマと SQLAlchemy モデルを分離する**: APIの入出力とDB表現を混ぜない
-- **文字列入力フィールドは必ず空白トリム規則を適用**: ユーザー入力の文字列フィールド（`title` / `name` / `display_name` 等）を Pydantic スキーマで定義するときは、[`docs/requirements.md`](./docs/requirements.md) §2.0 の共通バリデーション規則（前後空白を `BeforeValidator` でトリム → 空白のみは `min_length=1` で拒否）を必ず踏襲する。実装例は [`backend/app/schemas/tag.py`](./backend/app/schemas/tag.py) の `TagName`。
+- **文字列入力フィールドは必ず空白トリム規則を適用**: ユーザー入力の文字列フィールド（`title` / `name` / `display_name` 等）を Pydantic スキーマで定義するときは、[`docs/requirements.md`](./docs/requirements.md) §2.0 の共通バリデーション規則（前後空白を `BeforeValidator` でトリム → 空白のみは `min_length=1` で拒否）を必ず踏襲する。トリムは [`backend/app/schemas/_validators.py`](./backend/app/schemas/_validators.py) の `strip_str` を `BeforeValidator` に渡して再利用する。実装例: [`backend/app/schemas/tag.py`](./backend/app/schemas/tag.py) の `TagName` / [`backend/app/schemas/memo.py`](./backend/app/schemas/memo.py) の `Title`。
 - **レイヤー責務を守る**:
   - `api/` はHTTPだけを扱う
   - `services/` がビジネスロジック

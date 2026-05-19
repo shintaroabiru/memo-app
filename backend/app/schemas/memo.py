@@ -12,20 +12,17 @@ from uuid import UUID
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
 
+from app.schemas._validators import strip_str
+
 TITLE_MIN_LENGTH = 1
 TITLE_MAX_LENGTH = 100
 BODY_MAX_LENGTH = 10000
 TAG_IDS_MAX_COUNT = 10
 
 
-def _strip_str(value: object) -> object:
-    """文字列なら前後空白をトリム。空白のみは min_length=1 で弾かれる。"""
-    return value.strip() if isinstance(value, str) else value
-
-
 Title = Annotated[
     str,
-    BeforeValidator(_strip_str),
+    BeforeValidator(strip_str),
     Field(min_length=TITLE_MIN_LENGTH, max_length=TITLE_MAX_LENGTH),
 ]
 

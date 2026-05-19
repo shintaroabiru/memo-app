@@ -39,7 +39,7 @@
 4. **重複検知もトリム後の値で行う**
    - 空白の有無で同名フィールドが別レコードとして登録されないようにする
 
-> 実装例は [`backend/app/schemas/tag.py`](../backend/app/schemas/tag.py) の `TagName` を参照。`BeforeValidator(_strip_str)` と `Field(min_length=…, max_length=…)` を `Annotated` で合成するパターンを採用している。
+> トリム処理は [`backend/app/schemas/_validators.py`](../backend/app/schemas/_validators.py) の `strip_str` に集約してあるので、新規スキーマでも必ずこれを `BeforeValidator` に渡す。実装例は [`backend/app/schemas/tag.py`](../backend/app/schemas/tag.py) の `TagName` および [`backend/app/schemas/memo.py`](../backend/app/schemas/memo.py) の `Title`：`Annotated[str, BeforeValidator(strip_str), Field(min_length=…, max_length=…)]` で合成する。
 
 ### 2.1 Memo（メモ）
 

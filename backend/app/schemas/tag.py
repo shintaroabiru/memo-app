@@ -6,13 +6,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
+from app.schemas._validators import strip_str
+
 TAG_NAME_MIN_LENGTH = 1
 TAG_NAME_MAX_LENGTH = 20
-
-
-def _strip_str(value: object) -> object:
-    """文字列なら前後空白をトリム。空白のみは min_length=1 で弾かれる。"""
-    return value.strip() if isinstance(value, str) else value
 
 
 # 前後の空白をトリムしてから長さ制約を適用するタグ名の型。
@@ -20,7 +17,7 @@ def _strip_str(value: object) -> object:
 # `min_length=1` のバリデーションエラーになる。
 TagName = Annotated[
     str,
-    BeforeValidator(_strip_str),
+    BeforeValidator(strip_str),
     Field(min_length=TAG_NAME_MIN_LENGTH, max_length=TAG_NAME_MAX_LENGTH),
 ]
 
