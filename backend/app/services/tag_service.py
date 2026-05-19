@@ -42,7 +42,7 @@ class TagService:
         if tag is None:
             raise NotFoundError(message="タグが見つかりません")
         self._repo.delete(tag)
-        self._session.commit()
+        self._commit_or_conflict()
 
     def _commit_or_conflict(self) -> None:
         """commit を試み、tags の UNIQUE 違反なら ConflictError に変換する。
