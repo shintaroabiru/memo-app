@@ -1,6 +1,7 @@
 """pytest共通フィクスチャ。
 
-- `client`: FastAPIのテスト用HTTPクライアント（依存性オーバーライド済み）
+- `client`: 素の FastAPI テスト用HTTPクライアント（DB・ユーザーに依存しない）
+- `api_client`: `client` に DB セッションとデフォルトユーザーを差し込んだ APIテスト用
 - `db_session`: テストDBに接続したSQLAlchemyセッション（各テストでロールバック）
 - `default_user`: API テスト用の仮ユーザー（`get_current_user_id` 経由で参照される）
 - テスト用DB (`memo_app_test`) は初回テスト時に自動作成される
@@ -83,8 +84,20 @@ def default_user(db_session: Session) -> UserProfile:
 
 
 @pytest.fixture
-def client(db_session: Session, default_user: UserProfile) -> Generator[TestClient, None, None]:
-    """FastAPIのテスト用HTTPクライアント。
+def client() -> TestClient:
+    """素の FastAPI テスト用 HTTP クライアント。
+
+    DB・ユーザーに依存しないエンドポイント（`/health` など）のテスト向け。
+    DB やユーザーが必要な API テストは `api_client` を使う。
+    """
+    return TestClient(fastapi_app)
+
+
+@pytest.fixture
+def api_client(
+    db_session: Session, default_user: UserProfile
+) -> Generator[TestClient, None, None]:
+    """API テスト用のクライアント。
 
     `get_session` をテスト用セッションに、`get_current_user_id` を `default_user` に差し替える。
     """
