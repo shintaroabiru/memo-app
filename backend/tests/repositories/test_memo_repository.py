@@ -345,6 +345,54 @@ def test_search_query_matches_body(db_session: Session) -> None:
     assert items[0].title == "t1"
 
 
+def test_search_treats_percent_as_literal_in_q(db_session: Session) -> None:
+    """ILIKE の `%` ワイルドカードがユーザー入力でリテラルとして扱われる。"""
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "100%達成")
+    _make_memo(db_session, user, "100abc")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q="100%", tag_ids=[], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "100%達成"
+
+
+def test_search_treats_underscore_as_literal_in_q(db_session: Session) -> None:
+    """ILIKE の `_` ワイルドカードがユーザー入力でリテラルとして扱われる。"""
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "user_a")
+    _make_memo(db_session, user, "userXa")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q="user_a", tag_ids=[], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "user_a"
+
+
+def test_search_treats_backslash_as_literal_in_q(db_session: Session) -> None:
+    """エスケープ文字 `\\` 自体がユーザー入力でリテラルとして扱われる。"""
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "path\\file")
+    _make_memo(db_session, user, "pathfile")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q="path\\file", tag_ids=[], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "path\\file"
+
+
 def test_search_query_returns_empty_when_no_match(db_session: Session) -> None:
     user = _make_user(db_session)
     _make_memo(db_session, user, "t", body="b")

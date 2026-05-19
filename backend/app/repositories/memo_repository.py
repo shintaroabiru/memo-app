@@ -9,6 +9,17 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Memo, MemoTag, Tag
 
+# ILIKE のメタ文字。`\` を先頭にして二重エスケープを防ぐ
+# （先に `%` を `\%` に置換した後で `\` を `\\` に置換すると `\%` -> `\\%` になってしまう）。
+_ILIKE_SPECIAL_CHARS = ("\\", "%", "_")
+
+
+def _escape_ilike(value: str) -> str:
+    """ILIKE のメタ文字 (`\\`, `%`, `_`) を `\\` でエスケープしてリテラル化する。"""
+    for ch in _ILIKE_SPECIAL_CHARS:
+        value = value.replace(ch, f"\\{ch}")
+    return value
+
 
 class MemoRepository:
     """メモの永続化操作。`memo_tags` は SQLAlchemy のリレーション越しに扱う。"""
@@ -129,8 +140,14 @@ class MemoRepository:
         conditions: list = [Memo.user_id == user_id]
 
         if q:
-            pattern = f"%{q}%"
-            conditions.append(or_(Memo.title.ilike(pattern), Memo.body.ilike(pattern)))
+            pattern = f"%{_escape_ilike(q)}%"
+            # `escape="\\"` で PostgreSQL に「`\` がメタ文字のエスケープ」と伝える
+            conditions.append(
+                or_(
+                    Memo.title.ilike(pattern, escape="\\"),
+                    Memo.body.ilike(pattern, escape="\\"),
+                )
+            )
 
         if tag_ids:
             conditions.append(Memo.id.in_(self._memo_ids_having_all_tags(tag_ids)))
