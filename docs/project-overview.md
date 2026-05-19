@@ -15,7 +15,8 @@
 - **TypeScript**（strict mode）
 - **React**
 - **Zod**（バリデーション）
-- **Zustand**（状態管理）
+- **Zustand**（クライアント状態管理）
+- **SWR**（サーバー状態のキャッシュ・再検証）
 - **Tailwind CSS**
 - **Vitest**（テストランナー）
 - **ESLint + Prettier**（Lint / Formatter）
