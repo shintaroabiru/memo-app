@@ -69,6 +69,45 @@ def test_create_memo_with_tags(
     assert [t["name"] for t in body["tags"]] == ["a", "b"]
 
 
+def test_create_memo_returns_tags_in_name_order_regardless_of_input(
+    api_client: TestClient, db_session: Session, default_user: UserProfile
+) -> None:
+    """POST レスポンスの tags はタグ名昇順で返る（api-spec.md §2.1-2.2）。
+
+    タグの挿入順をアルファベット逆順にすることで、挿入順序とソート順の偶然の一致を排除する。
+    """
+    tag_z = Tag(user_id=default_user.id, name="z")
+    tag_a = Tag(user_id=default_user.id, name="a")
+    db_session.add_all([tag_z, tag_a])
+    db_session.flush()
+
+    res = api_client.post(
+        "/api/v1/memos",
+        json={"title": "t", "tag_ids": [str(tag_z.id), str(tag_a.id)]},
+    )
+
+    assert res.status_code == 201
+    assert [t["name"] for t in res.json()["tags"]] == ["a", "z"]
+
+
+def test_update_memo_returns_tags_in_name_order_regardless_of_input(
+    api_client: TestClient, db_session: Session, default_user: UserProfile
+) -> None:
+    tag_z = Tag(user_id=default_user.id, name="z")
+    tag_a = Tag(user_id=default_user.id, name="a")
+    db_session.add_all([tag_z, tag_a])
+    db_session.flush()
+    created = _create(api_client, title="t")
+
+    res = api_client.put(
+        f"/api/v1/memos/{created['id']}",
+        json={"title": "t", "tag_ids": [str(tag_z.id), str(tag_a.id)]},
+    )
+
+    assert res.status_code == 200
+    assert [t["name"] for t in res.json()["tags"]] == ["a", "z"]
+
+
 def test_create_memo_returns_400_on_validation_error(api_client: TestClient) -> None:
     res = api_client.post("/api/v1/memos", json={"title": ""})
 

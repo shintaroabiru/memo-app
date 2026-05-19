@@ -271,6 +271,21 @@ backend/
 
 実装例: [`backend/app/services/memo_service.py`](../backend/app/services/memo_service.py) の `_resolve_tags` と [`backend/app/repositories/memo_repository.py`](../backend/app/repositories/memo_repository.py) の `find_user_tags`。同様のニーズが発生する新しいエンドポイントでもこのパターンを踏襲する。
 
+#### 共通実装パターン: relationship 経由で代入したコレクションを order_by 適用で返す
+
+`Memo.tags` のような多対多 relationship に Python 側で `memo.tags = [tag_x, ...]` と代入してコミットした直後に `memo.tags` を読むと、**relationship に定義した `order_by` ではなく、代入時に渡したリストの順序**が返ってくる。これは SQLAlchemy が identity map にキャッシュした InstrumentedList を保持し続け、`selectinload` を含む再ロード戦略は「未ロードの属性のみロード」する仕様のため、既に代入で埋まったコレクションを上書きしないのが理由。
+
+API レスポンスで relationship に定義した `order_by`（例: タグ名昇順）を効かせたいときは、**コミット後に対象属性を `expire` してから `refresh` する**。
+
+```python
+self._session.commit()
+self._session.expire(memo, ["tags"])
+self._session.refresh(memo, ["tags"])
+return memo
+```
+
+実装例: [`backend/app/services/memo_service.py`](../backend/app/services/memo_service.py) の `_reload_tags`。`POST /memos` / `PUT /memos/{id}` のレスポンスに含まれる `tags` を name 昇順で揃えるために使用している。新規エンドポイントでも、relationship 経由で更新したコレクションをそのままレスポンスで返す場合は同じパターンを踏襲する。
+
 ### 4.3 APIバージョニング
 
 - FastAPI 側を **正準パス** とし、`/api/v1/...` プレフィックスで運用する（将来の破壊的変更に備える）

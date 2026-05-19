@@ -35,6 +35,7 @@ class MemoService:
             tags=tags,
         )
         self._session.commit()
+        self._reload_tags(memo)
         return memo
 
     def update_memo(self, *, user_id: UUID, memo_id: UUID, payload: MemoCreate) -> Memo:
@@ -48,6 +49,7 @@ class MemoService:
             tags=tags,
         )
         self._session.commit()
+        self._reload_tags(memo)
         return memo
 
     def delete_memo(self, *, user_id: UUID, memo_id: UUID) -> None:
@@ -60,6 +62,16 @@ class MemoService:
         self._repo.update_pinned(memo, is_pinned=is_pinned)
         self._session.commit()
         return memo
+
+    def _reload_tags(self, memo: Memo) -> None:
+        """`memo.tags` を強制リロードして relationship の `order_by` (name 昇順) を適用する。
+
+        代入直後の `memo.tags` は `find_user_tags` の `IN(...)` 戻り順のままで、
+        name 昇順が保証されない。Identity map にキャッシュされた InstrumentedList を
+        上書きするため、属性を expire してから `refresh` で取り直す。
+        """
+        self._session.expire(memo, ["tags"])
+        self._session.refresh(memo, ["tags"])
 
     def _resolve_tags(self, *, user_id: UUID, tag_ids: list[UUID]) -> list[Tag]:
         """指定された tag_ids のすべてがユーザー所有であることを確認して Tag を返す。
