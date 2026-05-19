@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -9,7 +10,16 @@ from sqlalchemy.orm import Session
 from app.core.errors import BadRequestError, NotFoundError
 from app.models import Memo, Tag
 from app.repositories.memo_repository import MemoRepository
-from app.schemas.memo import MemoCreate
+from app.schemas.memo import MemoCreate, MemoListQuery
+
+
+class MemoListResult(TypedDict):
+    """list_memos の戻り値。API 層で MemoListResponse として返される形に合わせる。"""
+
+    items: list[Memo]
+    total: int
+    limit: int
+    offset: int
 
 
 class MemoService:
@@ -62,6 +72,32 @@ class MemoService:
         self._repo.update_pinned(memo, is_pinned=is_pinned)
         self._session.commit()
         return memo
+
+    def list_memos(self, *, user_id: UUID, query: MemoListQuery) -> MemoListResult:
+        """検索条件に基づいてメモを取得し、API レスポンス形に整える。
+
+        `q` は前後空白をトリムし、空白のみの場合は「未指定」と同じ扱いに正規化する
+        （memo-search タスクの決定事項）。タグの並び順は `selectinload(Memo.tags)` +
+        relationship の `order_by=Tag.name` で保証される。
+        """
+        q_normalized = query.q.strip() if query.q is not None else None
+        if not q_normalized:
+            q_normalized = None
+
+        items, total = self._repo.search(
+            user_id=user_id,
+            q=q_normalized,
+            tag_ids=query.tag_ids,
+            pinned=query.pinned,
+            limit=query.limit,
+            offset=query.offset,
+        )
+        return {
+            "items": items,
+            "total": total,
+            "limit": query.limit,
+            "offset": query.offset,
+        }
 
     def _reload_tags(self, memo: Memo) -> None:
         """`memo.tags` を強制リロードして relationship の `order_by` (name 昇順) を適用する。

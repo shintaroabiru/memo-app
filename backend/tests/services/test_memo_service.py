@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import BadRequestError, NotFoundError
 from app.models import Memo, Tag, UserProfile
-from app.schemas.memo import MemoCreate
+from app.schemas.memo import MemoCreate, MemoListQuery
 from app.services.memo_service import MemoService
 
 
@@ -192,3 +192,59 @@ def test_toggle_pin_raises_not_found(db_session: Session) -> None:
 
     with pytest.raises(NotFoundError):
         service.toggle_pin(user_id=user.id, memo_id=uuid4(), is_pinned=True)
+
+
+# ===== list_memos のテスト =====
+
+
+def test_list_memos_returns_items_total_limit_offset(db_session: Session) -> None:
+    user = _make_user(db_session)
+    service = MemoService(db_session)
+    service.create_memo(user_id=user.id, payload=MemoCreate(title="a"))
+    service.create_memo(user_id=user.id, payload=MemoCreate(title="b"))
+
+    result = service.list_memos(user_id=user.id, query=MemoListQuery(limit=10, offset=0))
+
+    assert result["total"] == 2
+    assert result["limit"] == 10
+    assert result["offset"] == 0
+    assert {m.title for m in result["items"]} == {"a", "b"}
+
+
+def test_list_memos_normalizes_q_with_strip(db_session: Session) -> None:
+    """前後空白を含むキーワードはトリムされる。"""
+    user = _make_user(db_session)
+    service = MemoService(db_session)
+    service.create_memo(user_id=user.id, payload=MemoCreate(title="買い物"))
+
+    result = service.list_memos(user_id=user.id, query=MemoListQuery(q="  買い物  "))
+
+    assert result["total"] == 1
+    assert result["items"][0].title == "買い物"
+
+
+def test_list_memos_treats_whitespace_only_q_as_no_filter(db_session: Session) -> None:
+    """空白のみの q は「未指定」と同じ扱いで全件返す。"""
+    user = _make_user(db_session)
+    service = MemoService(db_session)
+    service.create_memo(user_id=user.id, payload=MemoCreate(title="a"))
+    service.create_memo(user_id=user.id, payload=MemoCreate(title="b"))
+
+    result = service.list_memos(user_id=user.id, query=MemoListQuery(q="   "))
+
+    assert result["total"] == 2
+
+
+def test_list_memos_items_tags_are_sorted_by_name(db_session: Session) -> None:
+    user = _make_user(db_session)
+    tag_z = _make_tag(db_session, user, "z")
+    tag_a = _make_tag(db_session, user, "a")
+    service = MemoService(db_session)
+    service.create_memo(
+        user_id=user.id,
+        payload=MemoCreate(title="t", tag_ids=[tag_z.id, tag_a.id]),
+    )
+
+    result = service.list_memos(user_id=user.id, query=MemoListQuery())
+
+    assert [t.name for t in result["items"][0].tags] == ["a", "z"]

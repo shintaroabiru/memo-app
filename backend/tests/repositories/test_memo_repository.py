@@ -229,3 +229,232 @@ def test_find_user_tags_with_empty_input_returns_empty(db_session: Session) -> N
     repo = MemoRepository(db_session)
 
     assert repo.find_user_tags(user_id=user.id, tag_ids=[]) == []
+
+
+# ===== Repository.search のテスト =====
+
+
+def _make_memo(
+    db: Session,
+    user: UserProfile,
+    title: str,
+    *,
+    body: str | None = None,
+    is_pinned: bool = False,
+    tags: list[Tag] | None = None,
+) -> Memo:
+    memo = Memo(user_id=user.id, title=title, body=body, is_pinned=is_pinned)
+    if tags:
+        memo.tags = tags
+    db.add(memo)
+    db.flush()
+    return memo
+
+
+def _backdate(db: Session, memo: Memo, days_ago: int) -> None:
+    """savepoint 内では now() が固定なので、updated_at を raw SQL でずらす。"""
+    ts = datetime.now(UTC) - timedelta(days=days_ago)
+    db.execute(
+        text("UPDATE memos SET updated_at = :ts WHERE id = :id"),
+        {"ts": ts, "id": memo.id},
+    )
+
+
+def test_search_returns_all_user_memos_sorted_by_pinned_then_updated(
+    db_session: Session,
+) -> None:
+    user = _make_user(db_session)
+    m1 = _make_memo(db_session, user, "old", is_pinned=False)
+    m2 = _make_memo(db_session, user, "new", is_pinned=False)
+    _make_memo(db_session, user, "pinned", is_pinned=True)
+    db_session.flush()
+    # updated_at: m1 が一番古い、m2 がそのつぎ、pinned は新しめ。だが is_pinned が優先される
+    _backdate(db_session, m1, days_ago=2)
+    _backdate(db_session, m2, days_ago=1)
+    db_session.expire_all()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(user_id=user.id, q=None, tag_ids=[], pinned=None, limit=20, offset=0)
+
+    assert total == 3
+    titles = [m.title for m in items]
+    assert titles[0] == "pinned"  # is_pinned=True が最上位
+    assert titles[1:] == ["new", "old"]  # updated_at DESC
+
+
+def test_search_isolates_other_users(db_session: Session) -> None:
+    owner = _make_user(db_session, "owner")
+    other = _make_user(db_session, "other")
+    _make_memo(db_session, owner, "own")
+    _make_memo(db_session, other, "other_memo")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=owner.id, q=None, tag_ids=[], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "own"
+
+
+def test_search_pagination_limits_and_offsets(db_session: Session) -> None:
+    user = _make_user(db_session)
+    for i in range(5):
+        m = _make_memo(db_session, user, f"m{i}")
+        db_session.flush()
+        _backdate(db_session, m, days_ago=5 - i)  # m0 が最も古い → m4 が最新
+    db_session.expire_all()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(user_id=user.id, q=None, tag_ids=[], pinned=None, limit=2, offset=1)
+
+    assert total == 5  # 全件数を返す
+    assert len(items) == 2
+    # updated_at DESC: m4, m3, m2, m1, m0 → offset=1 から limit=2 で m3, m2
+    assert [m.title for m in items] == ["m3", "m2"]
+
+
+def test_search_query_matches_title_case_insensitively(db_session: Session) -> None:
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "Hello World")
+    _make_memo(db_session, user, "Goodbye")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q="hello", tag_ids=[], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "Hello World"
+
+
+def test_search_query_matches_body(db_session: Session) -> None:
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "t1", body="本文に検索ワード含む")
+    _make_memo(db_session, user, "t2", body="関係ない")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q="検索ワード", tag_ids=[], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "t1"
+
+
+def test_search_query_returns_empty_when_no_match(db_session: Session) -> None:
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "t", body="b")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q="存在しない", tag_ids=[], pinned=None, limit=20, offset=0
+    )
+
+    assert items == []
+    assert total == 0
+
+
+def test_search_tag_and_requires_all_tags(db_session: Session) -> None:
+    user = _make_user(db_session)
+    tag_a = _make_tag(db_session, user, "a")
+    tag_b = _make_tag(db_session, user, "b")
+    _make_memo(db_session, user, "only_a", tags=[tag_a])
+    _make_memo(db_session, user, "only_b", tags=[tag_b])
+    _make_memo(db_session, user, "a_and_b", tags=[tag_a, tag_b])
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q=None, tag_ids=[tag_a.id, tag_b.id], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "a_and_b"
+
+
+def test_search_tag_and_with_single_tag(db_session: Session) -> None:
+    user = _make_user(db_session)
+    tag_a = _make_tag(db_session, user, "a")
+    _make_memo(db_session, user, "with_a", tags=[tag_a])
+    _make_memo(db_session, user, "without_a")
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id, q=None, tag_ids=[tag_a.id], pinned=None, limit=20, offset=0
+    )
+
+    assert total == 1
+    assert items[0].title == "with_a"
+
+
+def test_search_pinned_true_filters_only_pinned(db_session: Session) -> None:
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "p", is_pinned=True)
+    _make_memo(db_session, user, "np", is_pinned=False)
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(user_id=user.id, q=None, tag_ids=[], pinned=True, limit=20, offset=0)
+
+    assert total == 1
+    assert items[0].title == "p"
+
+
+def test_search_pinned_none_returns_all(db_session: Session) -> None:
+    user = _make_user(db_session)
+    _make_memo(db_session, user, "p", is_pinned=True)
+    _make_memo(db_session, user, "np", is_pinned=False)
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    _, total = repo.search(user_id=user.id, q=None, tag_ids=[], pinned=None, limit=20, offset=0)
+
+    assert total == 2
+
+
+def test_search_combined_conditions(db_session: Session) -> None:
+    user = _make_user(db_session)
+    tag_work = _make_tag(db_session, user, "work")
+    # 検索語＋タグ＋ピン留めすべて一致
+    target = _make_memo(
+        db_session, user, "会議メモ", body="重要な議題", is_pinned=True, tags=[tag_work]
+    )
+    # 検索語のみ一致 (タグなし、ピンなし) — 除外される
+    _make_memo(db_session, user, "会議の予定")
+    # タグ + ピンのみ一致 — 検索語なしで除外
+    _make_memo(db_session, user, "他のメモ", is_pinned=True, tags=[tag_work])
+    db_session.flush()
+
+    repo = MemoRepository(db_session)
+    items, total = repo.search(
+        user_id=user.id,
+        q="会議メモ",
+        tag_ids=[tag_work.id],
+        pinned=True,
+        limit=20,
+        offset=0,
+    )
+
+    assert total == 1
+    assert items[0].id == target.id
+
+
+def test_search_loads_tags_eagerly(db_session: Session) -> None:
+    """selectinload(Memo.tags) で N+1 を避け、tags も name 昇順で取得する。"""
+    user = _make_user(db_session)
+    tag_z = _make_tag(db_session, user, "z")
+    tag_a = _make_tag(db_session, user, "a")
+    _make_memo(db_session, user, "m", tags=[tag_z, tag_a])
+    db_session.flush()
+    db_session.expire_all()
+
+    repo = MemoRepository(db_session)
+    items, _ = repo.search(user_id=user.id, q=None, tag_ids=[], pinned=None, limit=20, offset=0)
+
+    assert [t.name for t in items[0].tags] == ["a", "z"]

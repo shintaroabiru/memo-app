@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, distinct, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Memo, Tag
+from app.models import Memo, MemoTag, Tag
 
 
 class MemoRepository:
@@ -76,3 +76,77 @@ class MemoRepository:
             return []
         stmt = select(Tag).where(Tag.user_id == user_id, Tag.id.in_(tag_ids))
         return list(self._session.scalars(stmt).all())
+
+    def search(
+        self,
+        *,
+        user_id: UUID,
+        q: str | None,
+        tag_ids: list[UUID],
+        pinned: bool | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[Memo], int]:
+        """検索条件にマッチするメモのリストと総件数を返す。
+
+        - キーワード `q`: タイトル + 本文の ILIKE 部分一致（大小無視）
+        - `tag_ids`: AND 条件（全タグを含むメモのみ。`db-schema.md` §5.3 準拠）
+        - `pinned=True` のみピン留めを絞り込み、`None` / `False` の指定はフィルタなし
+        - ソートは `is_pinned DESC, updated_at DESC, id DESC` で安定化
+        - `selectinload(Memo.tags)` で N+1 を避け、tags はリレーションの order_by で name 昇順
+        - `total` はページング適用前の全件数
+        """
+        base_filter = self._build_filter(user_id=user_id, q=q, tag_ids=tag_ids, pinned=pinned)
+
+        total = self._session.scalar(
+            select(func.count()).select_from(select(Memo).where(*base_filter).subquery())
+        )
+
+        items_stmt = (
+            select(Memo)
+            .where(*base_filter)
+            .order_by(
+                Memo.is_pinned.desc(),
+                Memo.updated_at.desc(),
+                Memo.id.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+            .options(selectinload(Memo.tags))
+        )
+        items = list(self._session.scalars(items_stmt).all())
+        return items, total or 0
+
+    def _build_filter(
+        self,
+        *,
+        user_id: UUID,
+        q: str | None,
+        tag_ids: list[UUID],
+        pinned: bool | None,
+    ) -> list:
+        """search の COUNT / SELECT 両方で使う WHERE 条件を組み立てる。"""
+        conditions: list = [Memo.user_id == user_id]
+
+        if q:
+            pattern = f"%{q}%"
+            conditions.append(or_(Memo.title.ilike(pattern), Memo.body.ilike(pattern)))
+
+        if tag_ids:
+            conditions.append(Memo.id.in_(self._memo_ids_having_all_tags(tag_ids)))
+
+        if pinned is True:
+            conditions.append(Memo.is_pinned.is_(True))
+
+        return conditions
+
+    @staticmethod
+    def _memo_ids_having_all_tags(tag_ids: list[UUID]) -> Select[tuple[UUID]]:
+        """指定タグを **すべて** 持つメモIDを返すサブクエリ。db-schema.md §5.3 準拠。"""
+        unique_ids = list(set(tag_ids))
+        return (
+            select(MemoTag.memo_id)
+            .where(MemoTag.tag_id.in_(unique_ids))
+            .group_by(MemoTag.memo_id)
+            .having(func.count(distinct(MemoTag.tag_id)) == len(unique_ids))
+        )

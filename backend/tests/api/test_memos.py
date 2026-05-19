@@ -266,3 +266,115 @@ def test_patch_pin_returns_404_when_missing(api_client: TestClient) -> None:
     res = api_client.patch(f"/api/v1/memos/{uuid4()}/pin", json={"is_pinned": True})
 
     assert res.status_code == 404
+
+
+# ===== GET /api/v1/memos =====
+
+
+def test_list_memos_returns_200_with_envelope(api_client: TestClient) -> None:
+    _create(api_client, title="a")
+    _create(api_client, title="b")
+
+    res = api_client.get("/api/v1/memos")
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 2
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert {m["title"] for m in body["items"]} == {"a", "b"}
+
+
+def test_list_memos_filters_by_q(api_client: TestClient) -> None:
+    _create(api_client, title="Hello", body="World")
+    _create(api_client, title="Foo")
+
+    res = api_client.get("/api/v1/memos", params={"q": "hello"})
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "Hello"
+
+
+def test_list_memos_filters_by_pinned(api_client: TestClient) -> None:
+    _create(api_client, title="p", is_pinned=True)
+    _create(api_client, title="np", is_pinned=False)
+
+    res = api_client.get("/api/v1/memos", params={"pinned": "true"})
+
+    body = res.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "p"
+
+
+def test_list_memos_filters_by_tag_ids_and_condition(
+    api_client: TestClient, db_session: Session, default_user: UserProfile
+) -> None:
+    tag_a = Tag(user_id=default_user.id, name="a")
+    tag_b = Tag(user_id=default_user.id, name="b")
+    db_session.add_all([tag_a, tag_b])
+    db_session.flush()
+    _create(api_client, title="only_a", tag_ids=[str(tag_a.id)])
+    _create(api_client, title="a_and_b", tag_ids=[str(tag_a.id), str(tag_b.id)])
+
+    res = api_client.get(
+        "/api/v1/memos",
+        # ?tag_ids=...&tag_ids=... の形式
+        params=[("tag_ids", str(tag_a.id)), ("tag_ids", str(tag_b.id))],
+    )
+
+    body = res.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "a_and_b"
+
+
+def test_list_memos_limit_offset(api_client: TestClient) -> None:
+    for i in range(5):
+        _create(api_client, title=f"m{i}")
+
+    res = api_client.get("/api/v1/memos", params={"limit": 2, "offset": 1})
+
+    body = res.json()
+    assert body["total"] == 5
+    assert body["limit"] == 2
+    assert body["offset"] == 1
+    assert len(body["items"]) == 2
+
+
+def test_list_memos_returns_400_when_limit_exceeds_max(api_client: TestClient) -> None:
+    res = api_client.get("/api/v1/memos", params={"limit": 101})
+
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_list_memos_returns_400_when_offset_negative(api_client: TestClient) -> None:
+    res = api_client.get("/api/v1/memos", params={"offset": -1})
+
+    assert res.status_code == 400
+
+
+def test_list_memos_returns_400_for_invalid_uuid_in_tag_ids(api_client: TestClient) -> None:
+    res = api_client.get("/api/v1/memos", params={"tag_ids": "not-a-uuid"})
+
+    assert res.status_code == 400
+
+
+def test_list_memos_isolates_other_users(
+    api_client: TestClient, db_session: Session, default_user: UserProfile
+) -> None:
+    other = UserProfile(display_name="other")
+    db_session.add(other)
+    db_session.flush()
+    from app.models import Memo
+
+    db_session.add(Memo(user_id=other.id, title="他人のメモ"))
+    db_session.flush()
+    _create(api_client, title="自分のメモ")
+
+    res = api_client.get("/api/v1/memos")
+
+    body = res.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "自分のメモ"

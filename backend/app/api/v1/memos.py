@@ -10,17 +10,30 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id, get_session
-from app.schemas.memo import MemoCreate, MemoPinResponse, MemoPinUpdate, MemoRead
+from app.schemas.memo import (
+    MemoCreate,
+    MemoListQuery,
+    MemoListResponse,
+    MemoPinResponse,
+    MemoPinUpdate,
+    MemoRead,
+)
 from app.services.memo_service import MemoService
 
 router = APIRouter(prefix="/memos", tags=["memos"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 UserIdDep = Annotated[UUID, Depends(get_current_user_id)]
+ListQueryDep = Annotated[MemoListQuery, Query()]
+
+
+@router.get("", response_model=MemoListResponse)
+def list_memos(query: ListQueryDep, session: SessionDep, user_id: UserIdDep) -> MemoListResponse:
+    return MemoService(session).list_memos(user_id=user_id, query=query)
 
 
 @router.get("/{memo_id}", response_model=MemoRead)

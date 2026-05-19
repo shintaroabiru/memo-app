@@ -88,3 +88,30 @@ class MemoPinResponse(BaseModel):
     id: UUID
     is_pinned: bool
     updated_at: datetime
+
+
+LIST_LIMIT_DEFAULT = 20
+LIST_LIMIT_MAX = 100
+
+
+class MemoListQuery(BaseModel):
+    """メモ一覧/検索のクエリパラメータ。
+
+    `q` は前後空白のトリムや空白のみの扱いを Service 層で正規化する。
+    `tag_ids` の AND/OR 条件や `pinned` の解釈は Repository 層に渡す。
+    """
+
+    q: str | None = None
+    tag_ids: list[UUID] = Field(default_factory=list)
+    pinned: bool | None = None
+    limit: int = Field(default=LIST_LIMIT_DEFAULT, ge=1, le=LIST_LIMIT_MAX)
+    offset: int = Field(default=0, ge=0)
+
+
+class MemoListResponse(BaseModel):
+    """メモ一覧/検索のレスポンス。"""
+
+    items: list[MemoRead]
+    total: int
+    limit: int
+    offset: int

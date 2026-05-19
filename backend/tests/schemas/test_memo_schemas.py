@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.memo import MemoCreate, MemoPinUpdate
+from app.schemas.memo import MemoCreate, MemoListQuery, MemoPinUpdate
 
 
 def test_memo_create_accepts_minimum_payload() -> None:
@@ -101,3 +101,53 @@ def test_memo_pin_update_requires_is_pinned() -> None:
 
     with pytest.raises(ValidationError):
         MemoPinUpdate()  # type: ignore[call-arg]
+
+
+def test_memo_list_query_defaults() -> None:
+    q = MemoListQuery()
+    assert q.q is None
+    assert q.tag_ids == []
+    assert q.pinned is None
+    assert q.limit == 20
+    assert q.offset == 0
+
+
+def test_memo_list_query_accepts_limit_1_to_100() -> None:
+    assert MemoListQuery(limit=1).limit == 1
+    assert MemoListQuery(limit=100).limit == 100
+
+
+def test_memo_list_query_rejects_limit_0() -> None:
+    with pytest.raises(ValidationError):
+        MemoListQuery(limit=0)
+
+
+def test_memo_list_query_rejects_limit_101() -> None:
+    with pytest.raises(ValidationError):
+        MemoListQuery(limit=101)
+
+
+def test_memo_list_query_accepts_offset_0_and_positive() -> None:
+    assert MemoListQuery(offset=0).offset == 0
+    assert MemoListQuery(offset=1000).offset == 1000
+
+
+def test_memo_list_query_rejects_negative_offset() -> None:
+    with pytest.raises(ValidationError):
+        MemoListQuery(offset=-1)
+
+
+def test_memo_list_query_accepts_uuid_tag_ids() -> None:
+    ids = [uuid4(), uuid4()]
+    q = MemoListQuery(tag_ids=ids)
+    assert q.tag_ids == ids
+
+
+def test_memo_list_query_rejects_invalid_uuid() -> None:
+    with pytest.raises(ValidationError):
+        MemoListQuery(tag_ids=["not-a-uuid"])  # type: ignore[list-item]
+
+
+def test_memo_list_query_accepts_pinned_bool() -> None:
+    assert MemoListQuery(pinned=True).pinned is True
+    assert MemoListQuery(pinned=False).pinned is False
