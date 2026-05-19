@@ -361,6 +361,13 @@ def test_list_memos_returns_400_for_invalid_uuid_in_tag_ids(api_client: TestClie
     assert res.status_code == 400
 
 
+def test_list_memos_returns_400_when_q_exceeds_max_length(api_client: TestClient) -> None:
+    res = api_client.get("/api/v1/memos", params={"q": "a" * 201})
+
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
 def test_list_memos_isolates_other_users(
     api_client: TestClient, db_session: Session, default_user: UserProfile
 ) -> None:

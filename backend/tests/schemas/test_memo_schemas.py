@@ -151,3 +151,13 @@ def test_memo_list_query_rejects_invalid_uuid() -> None:
 def test_memo_list_query_accepts_pinned_bool() -> None:
     assert MemoListQuery(pinned=True).pinned is True
     assert MemoListQuery(pinned=False).pinned is False
+
+
+def test_memo_list_query_accepts_q_at_200_chars() -> None:
+    q = "a" * 200
+    assert MemoListQuery(q=q).q == q
+
+
+def test_memo_list_query_rejects_q_over_200_chars() -> None:
+    with pytest.raises(ValidationError):
+        MemoListQuery(q="a" * 201)

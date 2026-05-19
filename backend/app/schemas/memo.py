@@ -92,6 +92,7 @@ class MemoPinResponse(BaseModel):
 
 LIST_LIMIT_DEFAULT = 20
 LIST_LIMIT_MAX = 100
+Q_MAX_LENGTH = 200
 
 
 class MemoListQuery(BaseModel):
@@ -101,7 +102,7 @@ class MemoListQuery(BaseModel):
     `tag_ids` の AND/OR 条件や `pinned` の解釈は Repository 層に渡す。
     """
 
-    q: str | None = None
+    q: str | None = Field(default=None, max_length=Q_MAX_LENGTH)
     tag_ids: list[UUID] = Field(default_factory=list)
     pinned: bool | None = None
     limit: int = Field(default=LIST_LIMIT_DEFAULT, ge=1, le=LIST_LIMIT_MAX)
