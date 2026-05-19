@@ -9,12 +9,12 @@
 
 ### 1.1 ベースURL
 
-| 環境               | ベースURL                          |
-|--------------------|-----------------------------------|
-| ブラウザ → BFF      | `/api/`                           |
-| BFF → FastAPI（内部）| `http://backend:8000/api/v1/`     |
+| 経路                 | ベースURL                          |
+|---------------------|-----------------------------------|
+| FastAPI（正準）       | `http://backend:8000/api/v1/`     |
+| BFF（ブラウザ → Next） | `/api/`（FastAPIへのパススルー）     |
 
-> 本ドキュメントでは **BFF（Next.js Route Handler）が公開するAPI** を中心に記述する。FastAPI側のパスはプレフィックスを `/api/v1/` に置き換えれば同じ仕様で動作する。
+> 本ドキュメントでは **FastAPI側の正準パス（`/api/v1/...`）** を基準に記述する。BFF（Next.js Route Handler）はこれを薄くプロキシし、ブラウザに対しては `/api/v1/` を `/api/` に読み替えて同じ仕様で公開する。
 
 ### 1.2 リクエスト形式
 
@@ -85,7 +85,7 @@
 **エンドポイント**
 
 ```
-GET /api/memos
+GET /api/v1/memos
 ```
 
 **クエリパラメータ**
@@ -101,7 +101,7 @@ GET /api/memos
 **リクエスト例**
 
 ```
-GET /api/memos?q=会議&tag_ids=tag-uuid-1&tag_ids=tag-uuid-2&limit=20&offset=0
+GET /api/v1/memos?q=会議&tag_ids=tag-uuid-1&tag_ids=tag-uuid-2&limit=20&offset=0
 ```
 
 **レスポンス例（200 OK）**
@@ -130,6 +130,8 @@ GET /api/memos?q=会議&tag_ids=tag-uuid-1&tag_ids=tag-uuid-2&limit=20&offset=0
 
 **ソート順**: `is_pinned DESC, updated_at DESC`（固定）
 
+**`tags` の並び順**: 各メモの `tags` 配列は `name` 昇順で返す（タグ一覧APIと同じソートルール）。
+
 ---
 
 ### 2.2 メモ詳細取得
@@ -137,7 +139,7 @@ GET /api/memos?q=会議&tag_ids=tag-uuid-1&tag_ids=tag-uuid-2&limit=20&offset=0
 **エンドポイント**
 
 ```
-GET /api/memos/{id}
+GET /api/v1/memos/{id}
 ```
 
 **パスパラメータ**
@@ -165,6 +167,8 @@ GET /api/memos/{id}
 
 **エラー**: `404 NOT_FOUND`（メモが存在しない）
 
+**`tags` の並び順**: 2.1 と同じく `name` 昇順で返す。
+
 ---
 
 ### 2.3 メモ新規作成
@@ -172,7 +176,7 @@ GET /api/memos/{id}
 **エンドポイント**
 
 ```
-POST /api/memos
+POST /api/v1/memos
 ```
 
 **リクエストボディ**
@@ -210,7 +214,7 @@ POST /api/memos
 **エンドポイント**
 
 ```
-PUT /api/memos/{id}
+PUT /api/v1/memos/{id}
 ```
 
 **リクエストボディ**
@@ -233,7 +237,7 @@ PUT /api/memos/{id}
 **エンドポイント**
 
 ```
-DELETE /api/memos/{id}
+DELETE /api/v1/memos/{id}
 ```
 
 **レスポンス**: `204 No Content`（ボディなし）
@@ -251,7 +255,7 @@ DELETE /api/memos/{id}
 **エンドポイント**
 
 ```
-PATCH /api/memos/{id}/pin
+PATCH /api/v1/memos/{id}/pin
 ```
 
 **リクエストボディ**
@@ -283,7 +287,7 @@ PATCH /api/memos/{id}/pin
 **エンドポイント**
 
 ```
-GET /api/tags
+GET /api/v1/tags
 ```
 
 **クエリパラメータ**: なし（フェーズ1ではユーザーの全タグを返す）
@@ -318,7 +322,7 @@ GET /api/tags
 **エンドポイント**
 
 ```
-POST /api/tags
+POST /api/v1/tags
 ```
 
 **リクエストボディ**
@@ -357,7 +361,7 @@ POST /api/tags
 **エンドポイント**
 
 ```
-PUT /api/tags/{id}
+PUT /api/v1/tags/{id}
 ```
 
 **リクエストボディ**
@@ -384,7 +388,7 @@ PUT /api/tags/{id}
 **エンドポイント**
 
 ```
-DELETE /api/tags/{id}
+DELETE /api/v1/tags/{id}
 ```
 
 **レスポンス**: `204 No Content`
@@ -402,7 +406,7 @@ DELETE /api/tags/{id}
 **エンドポイント**
 
 ```
-GET /api/profile
+GET /api/v1/profile
 ```
 
 **レスポンス例（200 OK）**
@@ -425,7 +429,7 @@ GET /api/profile
 **エンドポイント**
 
 ```
-PUT /api/profile
+PUT /api/v1/profile
 ```
 
 **リクエストボディ**
@@ -503,7 +507,7 @@ class MemoCreate(BaseModel):
     tag_ids: list[UUID] = Field(default_factory=list, max_length=10)
     is_pinned: bool = False
 
-class MemoResponse(BaseModel):
+class MemoRead(BaseModel):
     id: UUID
     title: str
     body: str | None
@@ -513,7 +517,7 @@ class MemoResponse(BaseModel):
     updated_at: datetime
 ```
 
-> 他のリソース（Tag、Profile）も同様の方針でZodとPydanticを並行定義する。
+> Pydanticは `Create` / `Read` 系命名（レイヤー責務に沿った内部表現）、Zodは `Create` / `Response` 系命名（HTTPレスポンスをそのまま表す）で並行定義する。他のリソース（Tag、Profile）も同様の方針。
 
 ---
 
@@ -521,18 +525,18 @@ class MemoResponse(BaseModel):
 
 | メソッド | パス                       | 概要                  | ステータス |
 |---------|---------------------------|----------------------|-----------|
-| GET     | `/api/memos`              | メモ一覧（検索・フィルタ含む） | 200       |
-| POST    | `/api/memos`              | メモ新規作成           | 201       |
-| GET     | `/api/memos/{id}`         | メモ詳細取得           | 200       |
-| PUT     | `/api/memos/{id}`         | メモ更新               | 200       |
-| DELETE  | `/api/memos/{id}`         | メモ削除               | 204       |
-| PATCH   | `/api/memos/{id}/pin`     | ピン留めトグル         | 200       |
-| GET     | `/api/tags`               | タグ一覧               | 200       |
-| POST    | `/api/tags`               | タグ新規作成           | 201       |
-| PUT     | `/api/tags/{id}`          | タグ更新               | 200       |
-| DELETE  | `/api/tags/{id}`          | タグ削除               | 204       |
-| GET     | `/api/profile`            | プロフィール取得       | 200       |
-| PUT     | `/api/profile`            | プロフィール更新       | 200       |
+| GET     | `/api/v1/memos`              | メモ一覧（検索・フィルタ含む） | 200       |
+| POST    | `/api/v1/memos`              | メモ新規作成           | 201       |
+| GET     | `/api/v1/memos/{id}`         | メモ詳細取得           | 200       |
+| PUT     | `/api/v1/memos/{id}`         | メモ更新               | 200       |
+| DELETE  | `/api/v1/memos/{id}`         | メモ削除               | 204       |
+| PATCH   | `/api/v1/memos/{id}/pin`     | ピン留めトグル         | 200       |
+| GET     | `/api/v1/tags`               | タグ一覧               | 200       |
+| POST    | `/api/v1/tags`               | タグ新規作成           | 201       |
+| PUT     | `/api/v1/tags/{id}`          | タグ更新               | 200       |
+| DELETE  | `/api/v1/tags/{id}`          | タグ削除               | 204       |
+| GET     | `/api/v1/profile`            | プロフィール取得       | 200       |
+| PUT     | `/api/v1/profile`            | プロフィール更新       | 200       |
 
 ---
 

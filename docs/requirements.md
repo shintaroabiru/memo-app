@@ -180,18 +180,18 @@
 
 | メソッド | パス                | 概要                  |
 |----------|---------------------|----------------------|
-| `GET`    | `/api/memos`        | メモ一覧（検索・フィルタ含む） |
-| `POST`   | `/api/memos`        | メモ新規作成          |
-| `GET`    | `/api/memos/{id}`   | メモ詳細取得          |
-| `PUT`    | `/api/memos/{id}`   | メモ更新              |
-| `DELETE` | `/api/memos/{id}`   | メモ削除              |
-| `PATCH`  | `/api/memos/{id}/pin` | ピン留めトグル      |
-| `GET`    | `/api/tags`         | タグ一覧              |
-| `POST`   | `/api/tags`         | タグ新規作成          |
-| `PUT`    | `/api/tags/{id}`    | タグ更新（リネーム）  |
-| `DELETE` | `/api/tags/{id}`    | タグ削除              |
-| `GET`    | `/api/profile`      | プロフィール取得      |
-| `PUT`    | `/api/profile`      | プロフィール更新      |
+| `GET`    | `/api/v1/memos`        | メモ一覧（検索・フィルタ含む） |
+| `POST`   | `/api/v1/memos`        | メモ新規作成          |
+| `GET`    | `/api/v1/memos/{id}`   | メモ詳細取得          |
+| `PUT`    | `/api/v1/memos/{id}`   | メモ更新              |
+| `DELETE` | `/api/v1/memos/{id}`   | メモ削除              |
+| `PATCH`  | `/api/v1/memos/{id}/pin` | ピン留めトグル      |
+| `GET`    | `/api/v1/tags`         | タグ一覧              |
+| `POST`   | `/api/v1/tags`         | タグ新規作成          |
+| `PUT`    | `/api/v1/tags/{id}`    | タグ更新（リネーム）  |
+| `DELETE` | `/api/v1/tags/{id}`    | タグ削除              |
+| `GET`    | `/api/v1/profile`      | プロフィール取得      |
+| `PUT`    | `/api/v1/profile`      | プロフィール更新      |
 
 ---
 

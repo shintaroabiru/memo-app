@@ -45,7 +45,7 @@
 
 **通信の流れ**
 1. ブラウザ → Next.js Route Handler（`/api/memos` 等）
-2. Route Handler → FastAPI（`http://backend:8000/memos` 等、Docker内部通信）
+2. Route Handler → FastAPI（`http://backend:8000/api/v1/memos` 等、Docker内部通信）
 3. FastAPI → PostgreSQL
 
 ---
@@ -183,11 +183,14 @@ frontend/
 - **機能横断で使うコンポーネントが出てきた場合**は、`components/` 直下に切り出すか、汎用化して `components/ui/` に移す
 - **Claude Codeへの指示**: 「メモ機能の修正」は基本的に `features/memo/` 配下で完結するように設計
 
-### 3.4 状態管理方針（Zustand）
+### 3.4 状態管理方針（SWR + Zustand）
 
-- **サーバー由来のデータ**（メモ一覧、タグ一覧など）はサーバーコンポーネントでのフェッチを優先
-- **UI状態**（モーダル開閉、検索クエリ、フィルタ状態など）は Zustand で管理
-- 楽観的UI更新が必要な箇所（ピン留めトグル等）は Zustand に一時状態を保持して即時反映 → APIレスポンスで確定
+- **サーバー由来のデータ**（メモ一覧、タグ一覧など）の初期描画は **サーバーコンポーネントでのフェッチ** を優先
+- **クライアント側で再フェッチが必要な場面**（検索クエリ変更、フィルタ変更、ミューテーション後の再取得、別機能起因の無効化など）は **SWR** を使う
+  - キャッシュキーは URL ベース（例: `/api/memos?q=...&tag_ids=...`）
+  - 別コンポーネントからの無効化は `mutate(key)` で行う（例: タグ削除 → `mutate('/api/memos')`）
+- **UI状態**（モーダル開閉、フォーム入力、フィルタの一時状態など）は **Zustand** で管理
+- 楽観的UI更新が必要な箇所（ピン留めトグル等）は SWR の `mutate(key, optimisticData, { revalidate: true })` で即時反映 → サーバー結果で確定
 
 ---
 
@@ -232,9 +235,10 @@ backend/
 │
 ├── tests/
 │   ├── conftest.py
-│   ├── test_memos.py
-│   ├── test_tags.py
-│   └── test_profile.py
+│   ├── models/                       # SQLAlchemy モデルの単体テスト
+│   ├── repositories/                 # Repository層の単体テスト
+│   ├── services/                     # Service層の単体テスト
+│   └── api/                          # API層（TestClient）のテスト
 │
 ├── alembic/                          # マイグレーション
 │   └── versions/
@@ -259,8 +263,9 @@ backend/
 
 ### 4.3 APIバージョニング
 
-- `/api/v1/...` プレフィックスで運用し、将来の破壊的変更に備える
-- Next.js の Route Handler 側からは `/api/memos` 等で公開し、内部で `/api/v1/memos` を叩く
+- FastAPI 側を **正準パス** とし、`/api/v1/...` プレフィックスで運用する（将来の破壊的変更に備える）
+- BFF（Next.js Route Handler）は `/api/...` で薄くプロキシし、内部で `/api/v1/...` を呼び出す
+- 詳細は [`api-spec.md`](./api-spec.md) §1.1 を参照
 
 ---
 
@@ -324,7 +329,7 @@ backend/
 | Pythonクラス           | PascalCase                                              |
 | Python関数・変数       | snake_case                                              |
 | DBテーブル名           | snake_case・複数形（`memos`, `tags`, `memo_tags`）       |
-| APIパス               | ケバブケース or 単数/複数の規約を統一（複数形を採用）       |
+| APIパス               | 複数形（例: `/api/v1/memos`、`/api/v1/tags`）              |
 
 > 詳細な規約は `CLAUDE.md` で Claude Code 向けに明文化する。
 
