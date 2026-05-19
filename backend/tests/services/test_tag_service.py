@@ -1,6 +1,9 @@
 """TagService のテスト（Repositoryを直接呼ぶ統合テスト寄り）。"""
 
+from uuid import uuid4
+
 import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError
@@ -99,3 +102,13 @@ def test_delete_tag_raises_not_found_when_missing(db_session: Session) -> None:
 
     with pytest.raises(NotFoundError):
         service.delete_tag(user_id=user.id, tag_id=tag.id)
+
+
+def test_create_tag_propagates_fk_violation_as_integrity_error(db_session: Session) -> None:
+    """UNIQUE違反以外のIntegrityError（FK違反など）は ConflictError に丸めず伝播させる。"""
+    service = TagService(db_session)
+    nonexistent_user_id = uuid4()  # user_profiles に存在しない UUID
+
+    # ConflictError ではなく IntegrityError がそのまま raise されること
+    with pytest.raises(IntegrityError):
+        service.create_tag(user_id=nonexistent_user_id, name="test")
