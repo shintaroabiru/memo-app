@@ -18,6 +18,8 @@
 - **Zustand**（クライアント状態管理）
 - **SWR**（サーバー状態のキャッシュ・再検証）
 - **Tailwind CSS**
+- **shadcn/ui**（Radix UI ベースのコンポーネントをソースとして取り込み）
+- **lucide-react**（アイコンライブラリ）
 - **Vitest**（テストランナー）
 - **ESLint + Prettier**（Lint / Formatter）
 
@@ -35,6 +37,7 @@
 
 - **Pencil**（UIモックアップ・ワイヤーフレーム）
   - 成果物: `docs/design/design.pen`
+- デザイン方針・トークン・画面別指針: `docs/design/design.md`
 
 ### 開発環境
 

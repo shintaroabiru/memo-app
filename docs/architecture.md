@@ -62,8 +62,9 @@ memo-app/
 │   ├── architecture.md
 │   ├── db-schema.md
 │   ├── api-spec.md
-│   └── design/            # UIデザイン（Pencil）
+│   └── design/            # UIデザイン
 │       ├── README.md      # Pencilの使い方・運用ルール
+│       ├── design.md      # デザイン方針・トークン・画面別指針
 │       └── design.pen     # メインのモックアップファイル
 ├── docker-compose.yml     # バックエンド + DB の環境定義
 ├── .env.example           # 環境変数テンプレート
@@ -108,7 +109,7 @@ frontend/
 │   │           └── route.ts          # GET / PUT
 │   │
 │   ├── components/                   # 汎用UIコンポーネントのみ
-│   │   └── ui/                       # Button, Input, Modal 等
+│   │   └── ui/                       # shadcn/ui で取り込んだコンポーネント (Button, Input, Dialog 等)
 │   │
 │   ├── features/                     # 機能単位で集約（components/hooks/api/schemas/types）
 │   │   ├── memo/
@@ -179,8 +180,10 @@ frontend/
 ### 3.3 features 採用方針
 
 - **原則として、機能固有のコンポーネント・ロジックは `features/{機能名}/` 配下に閉じる**
-- **`components/ui/` には汎用UIのみ**（Button, Input, Modal等）。2つ以上の機能で再利用する場合のみここに昇格させる
+- **`components/ui/` には汎用UIのみ**（Button, Input, Dialog等）。**shadcn/ui CLI の出力先と一致**しており、shadcn 由来の部品（プロジェクトに直接コピーされたソース）と、自作の汎用UIを同居させる
+- 自作の汎用UIは「2つ以上の機能で再利用するもの」に限り `components/ui/` に昇格させる
 - **機能横断で使うコンポーネントが出てきた場合**は、`components/` 直下に切り出すか、汎用化して `components/ui/` に移す
+- shadcn/ui の部品は必要なものを都度 CLI で追加する（事前に全部入れない）。スタイルは [`docs/design/design.md`](./design/design.md) のデザイントークンに揃えて上書きする
 - **Claude Codeへの指示**: 「メモ機能の修正」は基本的に `features/memo/` 配下で完結するように設計
 
 ### 3.4 状態管理方針（SWR + Zustand）
@@ -383,3 +386,5 @@ return memo
 | フロントLint/Format   | ESLint + Prettier                               |
 | バックLint/Format     | Ruff                                            |
 | UIデザインツール       | Pencil（`docs/design/design.pen`）              |
+| UIデザイン方針        | `docs/design/design.md` に集約（トークン・コンポーネント・画面別指針） |
+| UIコンポーネント       | shadcn/ui + lucide-react（`frontend/src/components/ui/`）       |
