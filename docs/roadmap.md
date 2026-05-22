@@ -12,7 +12,7 @@
 - [x] タグ管理 API → [`tasks/tag-api.md`](./tasks/tag-api.md)
 - [x] メモCRUD API（タグ紐付け含む） → [`tasks/memo-crud.md`](./tasks/memo-crud.md)
 - [x] メモ一覧・検索 API（タグフィルタ含む） → [`tasks/memo-search.md`](./tasks/memo-search.md)
-- [ ] プロフィール編集 API → [`tasks/profile-api.md`](./tasks/profile-api.md)
+- [x] プロフィール編集 API → [`tasks/profile-api.md`](./tasks/profile-api.md)
 - [ ] フロント実装（メモCRUD画面） → [`tasks/frontend-memo-crud.md`](./tasks/frontend-memo-crud.md)
 - [ ] フロント実装（タグ管理モーダル） → [`tasks/frontend-tag-modal.md`](./tasks/frontend-tag-modal.md)
 - [ ] フロント実装（プロフィール編集） → [`tasks/frontend-profile.md`](./tasks/frontend-profile.md)
