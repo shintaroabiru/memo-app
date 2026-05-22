@@ -57,6 +57,42 @@ def test_memo_create_allows_omitted_body() -> None:
     assert schema.body is None
 
 
+def test_memo_create_body_strips_trailing_whitespace() -> None:
+    """末尾の空白・改行のみトリムする。"""
+    schema = MemoCreate(title="t", body="本文\n\n")
+    assert schema.body == "本文"
+
+
+def test_memo_create_body_preserves_leading_whitespace() -> None:
+    """先頭の空白（インデント等）は保存する。"""
+    schema = MemoCreate(title="t", body="  先頭空白\n本文\n  ")
+    assert schema.body == "  先頭空白\n本文"
+
+
+def test_memo_create_body_preserves_middle_tab_and_newline() -> None:
+    """中間の TAB / LF / CR は通常の入力として許容する。"""
+    schema = MemoCreate(title="t", body="abc\tdef\nghi")
+    assert schema.body == "abc\tdef\nghi"
+
+
+def test_memo_create_normalizes_empty_body_to_none() -> None:
+    """空文字列の body は null に正規化する（bio と同じ扱い）。"""
+    schema = MemoCreate(title="t", body="")
+    assert schema.body is None
+
+
+def test_memo_create_normalizes_whitespace_only_body_to_none() -> None:
+    """末尾トリム後に空になる body も null に正規化する。"""
+    schema = MemoCreate(title="t", body="   \n\n  ")
+    assert schema.body is None
+
+
+def test_memo_create_rejects_body_with_null_byte() -> None:
+    """NULL バイトを含む body は 400（DB の DataError を 500 として晒さない）。"""
+    with pytest.raises(ValidationError):
+        MemoCreate(title="t", body="abc\x00def")
+
+
 def test_memo_create_accepts_up_to_10_tag_ids() -> None:
     tag_ids = [uuid4() for _ in range(10)]
     schema = MemoCreate(title="t", tag_ids=tag_ids)

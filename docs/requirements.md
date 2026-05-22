@@ -39,14 +39,21 @@
    - 例: `bio: ""` も `bio: "   "` もサーバー側で `bio: null` として保存・返却する
    - 「未指定」「明示的に空」「null」をクライアント側で気にしなくてよくするため、状態を単一の `null` に揃える
    - 対象: `bio` / `avatar_url` など `min_length` を要求しない任意項目
-4. **長さ制約はトリム後の文字列に対して評価する**
+4. **本文系（長文）フィールドは末尾のみトリム + NULL バイト拒否 + 空 → null 正規化**
+   - 対象: `memo.body` のような長文テキスト。改行・タブ・先頭の空白などをユーザー意図として保存したいフィールド
+   - 処理: `rstrip()` で **末尾の空白・改行のみ** 除去（先頭・中間の空白は保存）
+   - PostgreSQL の `TEXT` が拒否する **NULL バイト (`\x00`)** を含む入力は `null_byte_in_body` として 400 で拒否する（DB の `DataError` を 500 として晒さない）
+   - TAB / LF / CR を含むそれ以外の制御文字は通常の入力として **許容** する
+   - rstrip 後に空文字列になった入力は `null` に正規化する（規則 #3 と同じく単一状態に揃える）
+5. **長さ制約はトリム後の文字列に対して評価する**
    - 例: `"  仕事  "` は `"仕事"` に正規化されてから 1〜20 文字の検査を受ける
-5. **重複検知もトリム後の値で行う**
+6. **重複検知もトリム後の値で行う**
    - 空白の有無で同名フィールドが別レコードとして登録されないようにする
 
 > トリム処理は [`backend/app/schemas/_validators.py`](../backend/app/schemas/_validators.py) に集約してある。新規スキーマでは必ずこれを `BeforeValidator` に渡す:
 > - 必須フィールド: `strip_str`（実装例: [`tag.py`](../backend/app/schemas/tag.py) の `TagName` / [`memo.py`](../backend/app/schemas/memo.py) の `Title` / [`profile.py`](../backend/app/schemas/profile.py) の `DisplayName`）
 > - 任意フィールド: `strip_or_none`（実装例: [`profile.py`](../backend/app/schemas/profile.py) の `bio` / `avatar_url`）
+> - 本文系フィールド: `normalize_body`（実装例: [`memo.py`](../backend/app/schemas/memo.py) の `MemoCreate.body`）
 
 ### 2.1 Memo（メモ）
 
@@ -63,7 +70,7 @@
 
 **バリデーション**
 - `title`: 1〜100文字（2.0 の共通規則に従い、前後空白トリム後の長さで判定。空白のみは 400 で拒否）
-- `body`: 最大10,000文字（暫定。前後空白はトリムしないが、本文末尾の改行などの扱いは実装時に再検討）
+- `body`: 最大10,000文字。2.0 §4「本文系フィールド」の規則を適用（末尾空白・改行のみトリム / 先頭・中間の空白は保存 / NULL バイトは 400 で拒否 / トリム後の空は `null` に正規化）
 - `tags`: 1メモあたり最大10個、タグ名は1〜20文字（2.0 の共通規則に従う）
 
 ### 2.2 Tag（タグ）

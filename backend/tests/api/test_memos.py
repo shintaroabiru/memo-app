@@ -140,6 +140,28 @@ def test_create_memo_returns_400_for_nonexistent_tag_id(api_client: TestClient) 
     assert res.json()["error"]["code"] == "BAD_REQUEST"
 
 
+def test_create_memo_strips_trailing_whitespace_from_body(api_client: TestClient) -> None:
+    res = api_client.post("/api/v1/memos", json={"title": "t", "body": "本文\n\n"})
+
+    assert res.status_code == 201
+    assert res.json()["body"] == "本文"
+
+
+def test_create_memo_normalizes_empty_body_to_null(api_client: TestClient) -> None:
+    res = api_client.post("/api/v1/memos", json={"title": "t", "body": ""})
+
+    assert res.status_code == 201
+    assert res.json()["body"] is None
+
+
+def test_create_memo_returns_400_for_body_with_null_byte(api_client: TestClient) -> None:
+    body_with_null = "abc" + chr(0) + "def"
+    res = api_client.post("/api/v1/memos", json={"title": "t", "body": body_with_null})
+
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
 def test_create_memo_returns_400_for_other_users_tag(
     api_client: TestClient, db_session: Session
 ) -> None:

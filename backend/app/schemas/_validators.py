@@ -21,6 +21,8 @@ DisplayName = Annotated[
 
 from __future__ import annotations
 
+from pydantic_core import PydanticCustomError
+
 
 def strip_str(value: object) -> object:
     """文字列なら前後空白をトリム。`min_length=1` と組み合わせれば空白のみを弾ける。
@@ -41,4 +43,32 @@ def strip_or_none(value: object) -> object:
     if not isinstance(value, str):
         return value
     stripped = value.strip()
+    return stripped if stripped else None
+
+
+def normalize_body(value: object) -> object:
+    """本文系の長文フィールドを正規化する。
+
+    - 末尾の空白・改行のみトリム (`rstrip()`)。先頭・中間は意図 (インデント等)
+      を尊重して保存する
+    - PostgreSQL の `TEXT` が拒否する NULL バイト (`\\x00`) を含む入力は
+      `null_byte_in_body` として `PydanticCustomError` を投げ、共通ハンドラで
+      400 `VALIDATION_ERROR` にする（DB の `DataError` を 500 として晒さない）
+    - トリム後に空文字列になった場合は `None` に正規化する
+      （`strip_or_none` と同じく「未指定」を単一状態に揃える）
+    - TAB / LF / CR を含むその他の制御文字は通常の入力として許容する
+
+    `memo.body` のような **任意の長文フィールド** で使う想定。
+    フィールド型は `str | None` を期待し、`BeforeValidator` 経由で適用する。
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return value
+    if "\x00" in value:
+        raise PydanticCustomError(
+            "null_byte_in_body",
+            "本文に NULL バイトを含めることはできません",
+        )
+    stripped = value.rstrip()
     return stripped if stripped else None

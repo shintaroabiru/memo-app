@@ -1,8 +1,9 @@
 """メモの Pydantic スキーマ。
 
-文字列入力（`title`）は requirements.md §2.0 の共通規則に従い
-`BeforeValidator` で前後空白をトリムしてから長さ制約を適用する。
-本文 `body` は仕様上トリムしない（末尾改行の保持など）。
+文字列入力は requirements.md §2.0 の共通規則に従う:
+- `title` (必須) → `strip_str` で前後空白トリム + 1〜100 文字
+- `body` (任意・本文系) → `normalize_body` で末尾空白トリム / NULL バイト拒否 /
+  空 → null 正規化
 """
 
 from datetime import datetime
@@ -12,7 +13,7 @@ from uuid import UUID
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
 
-from app.schemas._validators import strip_str
+from app.schemas._validators import normalize_body, strip_str
 
 TITLE_MIN_LENGTH = 1
 TITLE_MAX_LENGTH = 100
@@ -43,7 +44,12 @@ class MemoCreate(BaseModel):
     """
 
     title: Title
-    body: str | None = Field(default=None, max_length=BODY_MAX_LENGTH)
+    # `Field(max_length=...)` を `str | None` に直接付けると None で TypeError になるため、
+    # 内側の Annotated で str にだけ max_length を付与する（profile.py の bio と同パターン）。
+    body: Annotated[
+        Annotated[str, Field(max_length=BODY_MAX_LENGTH)] | None,
+        BeforeValidator(normalize_body),
+    ] = None
     tag_ids: list[UUID] = Field(default_factory=list, max_length=TAG_IDS_MAX_COUNT)
     is_pinned: bool = False
 
