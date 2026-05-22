@@ -32,14 +32,21 @@
 1. **前後の空白文字をトリムしてから長さ制約を適用する**
    - 対象: 半角空白・全角空白・タブ (`\t`)・改行 (`\n`, `\r`) など Python の `str.strip()` が除去する全ての文字
    - 実装位置: Pydantic スキーマの `BeforeValidator` で、長さ制約（`min_length` / `max_length`）の評価**前**に適用する
-2. **トリム後に空文字列となる入力は `min_length=1` のバリデーションエラー（400 `VALIDATION_ERROR`）として拒否する**
+2. **必須フィールドでトリム後に空文字列となる入力は `min_length=1` のバリデーションエラー（400 `VALIDATION_ERROR`）として拒否する**
    - すなわち `"   "` / `"\t\n"` のような空白のみの入力は不正
-3. **長さ制約はトリム後の文字列に対して評価する**
+   - 対象: `title` / `display_name` / `name` など `min_length=1` を要求するフィールド
+3. **任意 (nullable) フィールドでは、トリム後に空文字列になった入力を `null` に正規化する**
+   - 例: `bio: ""` も `bio: "   "` もサーバー側で `bio: null` として保存・返却する
+   - 「未指定」「明示的に空」「null」をクライアント側で気にしなくてよくするため、状態を単一の `null` に揃える
+   - 対象: `bio` / `avatar_url` など `min_length` を要求しない任意項目
+4. **長さ制約はトリム後の文字列に対して評価する**
    - 例: `"  仕事  "` は `"仕事"` に正規化されてから 1〜20 文字の検査を受ける
-4. **重複検知もトリム後の値で行う**
+5. **重複検知もトリム後の値で行う**
    - 空白の有無で同名フィールドが別レコードとして登録されないようにする
 
-> トリム処理は [`backend/app/schemas/_validators.py`](../backend/app/schemas/_validators.py) の `strip_str` に集約してあるので、新規スキーマでも必ずこれを `BeforeValidator` に渡す。実装例は [`backend/app/schemas/tag.py`](../backend/app/schemas/tag.py) の `TagName` および [`backend/app/schemas/memo.py`](../backend/app/schemas/memo.py) の `Title`：`Annotated[str, BeforeValidator(strip_str), Field(min_length=…, max_length=…)]` で合成する。
+> トリム処理は [`backend/app/schemas/_validators.py`](../backend/app/schemas/_validators.py) に集約してある。新規スキーマでは必ずこれを `BeforeValidator` に渡す:
+> - 必須フィールド: `strip_str`（実装例: [`tag.py`](../backend/app/schemas/tag.py) の `TagName` / [`memo.py`](../backend/app/schemas/memo.py) の `Title` / [`profile.py`](../backend/app/schemas/profile.py) の `DisplayName`）
+> - 任意フィールド: `strip_or_none`（実装例: [`profile.py`](../backend/app/schemas/profile.py) の `bio` / `avatar_url`）
 
 ### 2.1 Memo（メモ）
 
@@ -76,8 +83,8 @@
 |-----------------|-----------------|------|----------------------------|
 | `id`            | UUID            | ✅   | ユーザーID                  |
 | `display_name`  | string (1-50)   | ✅   | 表示名（2.0 の共通規則を適用）              |
-| `bio`           | string (0-200)  | ❌   | 自己紹介（2.0 の共通規則を適用、空文字列は許可） |
-| `avatar_url`    | string          | ❌   | アバター画像URL（任意。2.0 の共通規則を適用） |
+| `bio`           | string (0-200) \| null | ❌   | 自己紹介（2.0 の共通規則を適用。空文字列・空白のみは `null` に正規化する） |
+| `avatar_url`    | string \| null  | ❌   | アバター画像URL（任意。2.0 の共通規則を適用。空文字列・空白のみは `null` に正規化する） |
 | `created_at`    | timestamp       | ✅   | 作成日時                    |
 | `updated_at`    | timestamp       | ✅   | 最終更新日時                |
 

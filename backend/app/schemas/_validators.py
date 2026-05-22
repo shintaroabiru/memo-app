@@ -29,3 +29,16 @@ def strip_str(value: object) -> object:
     `str` 以外の値（None / 数値など）はそのまま返し、後段の型バリデーションに委ねる。
     """
     return value.strip() if isinstance(value, str) else value
+
+
+def strip_or_none(value: object) -> object:
+    """文字列なら strip し、空文字列になったら `None` に正規化する。
+
+    `bio` / `avatar_url` のような **任意の文字列フィールド** で
+    「未指定 (None)」「空文字列」を 1 つの状態 (None) にまとめるために使う。
+    フィールド型は `str | None` を期待し、`BeforeValidator` 経由で適用する。
+    """
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    return stripped if stripped else None

@@ -75,3 +75,19 @@ def test_put_profile_returns_400_when_bio_too_long(api_client: TestClient) -> No
     res = api_client.put("/api/v1/profile", json={"display_name": "x", "bio": "a" * 201})
 
     assert res.status_code == 400
+
+
+def test_put_profile_normalizes_empty_bio_to_null(api_client: TestClient) -> None:
+    res = api_client.put("/api/v1/profile", json={"display_name": "x", "bio": ""})
+
+    assert res.status_code == 200
+    assert res.json()["bio"] is None
+
+
+def test_put_profile_normalizes_empty_avatar_url_to_null(api_client: TestClient) -> None:
+    res = api_client.put(
+        "/api/v1/profile", json={"display_name": "x", "avatar_url": ""}
+    )
+
+    assert res.status_code == 200
+    assert res.json()["avatar_url"] is None

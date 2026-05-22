@@ -39,10 +39,16 @@ def test_profile_update_rejects_51_char_display_name_after_strip() -> None:
         ProfileUpdate(display_name="a" * 51)
 
 
-def test_profile_update_accepts_empty_bio() -> None:
-    """bio は空文字列を許可（requirements.md §2.0 の例外）。"""
+def test_profile_update_normalizes_empty_bio_to_none() -> None:
+    """空文字列の bio は null に正規化する（requirements.md §2.0 の表参照）。"""
     schema = ProfileUpdate(display_name="しん", bio="")
-    assert schema.bio == ""
+    assert schema.bio is None
+
+
+def test_profile_update_normalizes_whitespace_only_bio_to_none() -> None:
+    """前後空白のみの bio は strip 後に空になるので null に正規化する。"""
+    schema = ProfileUpdate(display_name="しん", bio="   ")
+    assert schema.bio is None
 
 
 def test_profile_update_strips_bio_whitespace() -> None:
@@ -69,6 +75,16 @@ def test_profile_update_allows_omitted_bio() -> None:
 def test_profile_update_strips_avatar_url() -> None:
     schema = ProfileUpdate(display_name="しん", avatar_url="  https://example.com/a.png  ")
     assert schema.avatar_url == "https://example.com/a.png"
+
+
+def test_profile_update_normalizes_empty_avatar_url_to_none() -> None:
+    schema = ProfileUpdate(display_name="しん", avatar_url="")
+    assert schema.avatar_url is None
+
+
+def test_profile_update_normalizes_whitespace_only_avatar_url_to_none() -> None:
+    schema = ProfileUpdate(display_name="しん", avatar_url="   ")
+    assert schema.avatar_url is None
 
 
 def test_profile_update_allows_omitted_avatar_url() -> None:
