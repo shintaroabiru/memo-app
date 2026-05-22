@@ -109,9 +109,7 @@ class MemoRepository:
         """
         base_filter = self._build_filter(user_id=user_id, q=q, tag_ids=tag_ids, pinned=pinned)
 
-        total = self._session.scalar(
-            select(func.count()).select_from(select(Memo).where(*base_filter).subquery())
-        )
+        total = self._session.scalar(select(func.count(Memo.id)).where(*base_filter)) or 0
 
         items_stmt = (
             select(Memo)
@@ -126,7 +124,7 @@ class MemoRepository:
             .options(selectinload(Memo.tags))
         )
         items = list(self._session.scalars(items_stmt).all())
-        return items, total or 0
+        return items, total
 
     def _build_filter(
         self,
