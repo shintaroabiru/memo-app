@@ -7,7 +7,12 @@
 ## 関連ドキュメント
 
 - 機能要件: [`../requirements.md`](../requirements.md) §3.7
-- UIデザイン: [`../design/`](../design/)
+- UIデザイン方針: [`../design/design.md`](../design/design.md)（§5.5 タグ管理モーダル / §5.6 削除確認ダイアログ / §5.7 タグ選択UI）
+- UIモック: [`../design/design.pen`](../design/design.pen) の以下フレームを照合先にする
+  - `タグ管理モーダル (PC 1280)` — 通常行・リネーム中行・削除確認中行を 1 画面で確認可能
+  - `削除確認ダイアログ (PC 1280)` — モーダル汎用UIの参考（メモ削除との UI 統一）
+  - `タグ選択コンボボックス展開 (PC 1280)` — メモ作成・編集時の「タグ管理を開く」起動経路
+  - `状態バリエーション集 (PC 1280)` — Input / Tag Chip / Button の状態を照合
 - アーキテクチャ: [`../architecture.md`](../architecture.md) §3
 - API仕様: [`../api-spec.md`](../api-spec.md) §3
 - 先行タスク: [`tag-api.md`](./tag-api.md) / [`frontend-memo-crud.md`](./frontend-memo-crud.md)

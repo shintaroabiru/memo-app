@@ -7,7 +7,10 @@
 ## 関連ドキュメント
 
 - 機能要件: [`../requirements.md`](../requirements.md) §3.8
-- UIデザイン: [`../design/`](../design/)
+- UIデザイン方針: [`../design/design.md`](../design/design.md)（§5.4 プロフィール編集）
+- UIモック: [`../design/design.pen`](../design/design.pen) の以下フレームを照合先にする
+  - `プロフィール編集 (PC 1280)` — アバター URL / 表示名（必須）/ 自己紹介（任意）の 3 フィールド
+  - `状態バリエーション集 (PC 1280)` — Input の Focus / Disabled / Error 状態を照合
 - アーキテクチャ: [`../architecture.md`](../architecture.md) §3
 - API仕様: [`../api-spec.md`](../api-spec.md) §4
 - 先行タスク: [`profile-api.md`](./profile-api.md) / [`frontend-memo-crud.md`](./frontend-memo-crud.md)（共通基盤の流用）

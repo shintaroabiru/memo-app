@@ -7,7 +7,17 @@
 ## 関連ドキュメント
 
 - 機能要件: [`../requirements.md`](../requirements.md) §3.2-3.5
-- UIデザイン: [`../design/`](../design/)
+- UIデザイン方針: [`../design/design.md`](../design/design.md)（§5.1 メモ一覧 / §5.2 新規作成 / §5.3 詳細・編集 / §5.7 タグ選択UI）
+- UIモック: [`../design/design.pen`](../design/design.pen) の以下フレームを照合先にする
+  - `メモ一覧 (PC 1280)` / `(Tablet 768)` / `(Mobile 375)` — レスポンシブ 3 サイズ
+  - `メモ一覧 (空状態 PC 1280)` — 全 0 件
+  - `メモ一覧 (検索結果0件 PC 1280)` — フィルタ適用後の 0 件
+  - `メモ一覧 (ローディング PC 1280)` — `SkeletonCard` を使った取得中表示
+  - `メモ新規作成 (PC 1280)` / `(エラー状態 PC 1280)` — 通常入力 / 上部アラート + フィールドエラー
+  - `メモ詳細 (PC 1280)` — 閲覧モード（編集モードは新規作成画面と統一）
+  - `タグ選択コンボボックス展開 (PC 1280)` — タグ入力時のポップオーバー
+  - `削除確認ダイアログ (PC 1280)` — メモタイトル inline 表示
+  - `状態バリエーション集 (PC 1280)` — Button / Input / Tag Chip / Sidebar Nav / IconButton の各状態を照合
 - アーキテクチャ: [`../architecture.md`](../architecture.md) §3
 - API仕様: [`../api-spec.md`](../api-spec.md) §2
 - 先行タスク: [`tag-api.md`](./tag-api.md) / [`memo-crud.md`](./memo-crud.md) / [`memo-search.md`](./memo-search.md)
