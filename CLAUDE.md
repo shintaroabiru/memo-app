@@ -15,7 +15,6 @@
 - **DB設計**: [`docs/db-schema.md`](./docs/db-schema.md)
 - **API仕様**: [`docs/api-spec.md`](./docs/api-spec.md)
 - **UIデザイン方針（デザイントークン・画面別指針）**: [`docs/design/design.md`](./docs/design/design.md)
-- **UIデザイン運用ルール**: [`docs/design/README.md`](./docs/design/README.md)
 - **ロードマップ / 進捗**: [`docs/roadmap.md`](./docs/roadmap.md)
 
 実装に着手する前に、**関連するドキュメントを必ず読んでください**。
@@ -64,7 +63,6 @@
 
 - **Pencil**（UIモックアップ・ワイヤーフレーム作成）
   - 成果物は `docs/design/design.pen` に配置
-  - 詳細な運用は [`docs/design/README.md`](./docs/design/README.md) を参照
 - **デザイン方針**: デザイントークン（カラー・タイポグラフィ・スペーシング）、コンポーネント方針、画面別指針は [`docs/design/design.md`](./docs/design/design.md) に集約。Tailwind 実装・Pencil 編集の双方でリファレンスとして参照する
 
 ### 環境
@@ -305,7 +303,6 @@ feat: メモの新規作成APIを追加
 | ワークフロー・規約の変更                                 | `CLAUDE.md`（本ファイル） |
 | プロジェクト全体の方針変更                               | `project-overview.md`     |
 | UIデザイン方針（トークン・コンポーネント・画面指針）変更 | `docs/design/design.md`   |
-| UIデザイン運用ルール（ファイル配置等）の変更             | `docs/design/README.md`   |
 | UIデザイン・画面モックの変更                             | `docs/design/design.pen`  |
 
 ### 8.3 確認を取るタイミング
